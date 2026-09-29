@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Request
+from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.api.deps import DB, CurrentUser
 from app.core.config import settings
+from app.core.errors import NotFoundError
+from app.models.auth import RefreshToken
+from app.models.base import utcnow
 from app.schemas.auth import (
     ChangePassword,
     ForgotPassword,
@@ -15,7 +20,7 @@ from app.schemas.auth import (
     TotpSetup,
     UserOut,
 )
-from app.schemas.common import Message
+from app.schemas.common import Message, UTCDateTime
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -97,3 +102,30 @@ def totp_enable(body: TotpCode, db: DB, user: CurrentUser):  # noqa: ANN201
 def totp_disable(body: TotpCode, db: DB, user: CurrentUser):  # noqa: ANN201
     auth_service.totp_disable(db, user, body.code)
     return Message(message="Two-factor authentication disabled")
+
+
+class SessionOut(BaseModel):
+    id: int
+    created_at: UTCDateTime
+    ip_address: str | None
+    user_agent: str | None
+    current: bool
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def my_sessions(request: Request, db: DB, user: CurrentUser):  # noqa: ANN201
+    current = getattr(request.state, "session_id", None)
+    rows = db.scalars(select(RefreshToken).where(
+        RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None), RefreshToken.expires_at > utcnow()
+    ).order_by(RefreshToken.id.desc()).limit(20))
+    return [SessionOut(id=r.id, created_at=r.created_at, ip_address=r.ip_address, user_agent=r.user_agent, current=r.id == current) for r in rows]
+
+
+@router.delete("/sessions/{session_id}", response_model=Message)
+def revoke_session(session_id: int, db: DB, user: CurrentUser):  # noqa: ANN201
+    row = db.get(RefreshToken, session_id)
+    if not row or row.user_id != user.id:
+        raise NotFoundError("Session not found")
+    row.revoked_at = utcnow()
+    db.commit()
+    return Message(message="Session signed out")

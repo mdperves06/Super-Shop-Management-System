@@ -67,6 +67,7 @@ def _apply_items(db: Session, po: PurchaseOrder, items: list[PurchaseItemIn]) ->
         tax += calc["tax_amount"]
         total += calc["line_total"]
     po.subtotal, po.discount_amount, po.tax_amount, po.total_amount = subtotal, discount, tax, total
+    db.flush()
 
 
 def create_purchase(db: Session, data: PurchaseCreate, user: User) -> PurchaseOrder:

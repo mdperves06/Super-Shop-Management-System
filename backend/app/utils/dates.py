@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from app.core.errors import ValidationFailed
@@ -14,7 +14,7 @@ def get_tz(name: str | None) -> ZoneInfo:
 
 
 def to_utc_naive(local_dt: datetime, tz: ZoneInfo) -> datetime:
-    return local_dt.replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+    return local_dt.replace(tzinfo=tz).astimezone(UTC).replace(tzinfo=None)
 
 
 def local_today(tz: ZoneInfo) -> date:

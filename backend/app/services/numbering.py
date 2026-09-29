@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import insert, select, update
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +13,7 @@ def next_number(db: Session, prefix: str, *, width: int = 6) -> str:
     The counter row is bumped with a single atomic UPDATE; concurrent transactions
     serialise on that row lock so two callers can never receive the same value.
     """
-    year = datetime.now(timezone.utc).year
+    year = datetime.now(UTC).year
     for _ in range(3):
         result = db.execute(
             update(NumberSequence)

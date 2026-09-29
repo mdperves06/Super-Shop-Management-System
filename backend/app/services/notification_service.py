@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.auth import User
 from app.models.catalog import Product
 from app.models.customers import Customer
-from app.models.inventory import Inventory, InventoryBatch
+from app.models.inventory import Inventory
 from app.models.purchasing import PurchaseOrder, Supplier
 from app.models.system import Notification, NotificationRead
 from app.services import inventory_queries, settings_service

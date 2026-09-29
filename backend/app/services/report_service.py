@@ -1,12 +1,13 @@
 """Tabular reports. Each report returns the same shape so the API can render JSON, CSV or Excel from it."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Callable
+from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFoundError
@@ -14,7 +15,7 @@ from app.models.auth import User
 from app.models.catalog import Product, ProductCategory
 from app.models.customers import Customer
 from app.models.finance import CashRegisterSession, Expense, ExpenseCategory, PaymentMethod
-from app.models.inventory import Inventory, InventoryBatch, InventoryTransaction
+from app.models.inventory import Inventory, InventoryTransaction
 from app.models.purchasing import GoodsReceipt, PurchaseOrder, PurchaseReturn, Supplier
 from app.models.sales import Sale, SaleItem, SalePayment, SaleReturn
 from app.services import financials, inventory_queries, settings_service
@@ -134,7 +135,7 @@ def sales_by_product(db: Session, f: Filters, with_profit: bool) -> Report:
          .where(*_item_where(f)).group_by(SaleItem.product_id, SaleItem.product_name, SaleItem.sku)
          .order_by(func.sum(SaleItem.line_total - SaleItem.returned_amount).desc()).limit(f.limit))
     rows = []
-    for pid, name, sku, qty, amt, tax, cogs in db.execute(q):
+    for _pid, name, sku, qty, amt, tax, cogs in db.execute(q):
         rows.append({"product": name, "sku": sku, "quantity": _f(qty), "sales": _f(amt), "cogs": _f(cogs),
                      "profit": _f(amt) - _f(tax) - _f(cogs)})
     cols = [col("product", "Product"), col("sku", "SKU"), col("quantity", "Qty sold", "qty"), col("sales", "Sales", "money")]

@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from tests.helpers import ensure_register_open, make_product, payment_method_id, sell, stock_product
+from tests.helpers import ensure_register_open, payment_method_id, sell, stock_product
 
 
 @pytest.fixture(scope="module")

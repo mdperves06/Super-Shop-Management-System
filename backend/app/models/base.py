@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, Numeric, func
@@ -11,7 +11,7 @@ Rate = Numeric(6, 2)
 
 def utcnow() -> datetime:
     """Naive UTC timestamp; all datetimes are stored as UTC."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 ZERO = Decimal("0")

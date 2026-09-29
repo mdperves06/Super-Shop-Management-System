@@ -1,11 +1,10 @@
-from datetime import date, datetime
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, Pagination, has_permission, require
-from app.core.errors import NotFoundError
 from app.models.auth import User
 from app.models.catalog import Product, ProductBarcode
 from app.models.inventory import Inventory, InventoryBatch, InventoryTransaction, StockAdjustment

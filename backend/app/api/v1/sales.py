@@ -4,12 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_, select
 
-from app.api.deps import DB, CurrentUser, Pagination, has_permission, require
+from app.api.deps import DB, Pagination, has_permission, require
 from app.core.errors import NotFoundError, PermissionDenied
 from app.models.auth import User
 from app.models.customers import Customer
-from app.models.finance import CashRegister, CashRegisterSession, CashTransaction
 from app.models.enums import CashTxnType
+from app.models.finance import CashRegister, CashRegisterSession
 from app.models.sales import Discount, Promotion, Sale, SalePayment, SaleReturn
 from app.repositories.base import apply_sort, like, page_response, paginate
 from app.schemas.common import Message, Page
@@ -27,11 +27,8 @@ from app.schemas.sales import (
     RegisterIn,
     RegisterOut,
     SaleCreate,
-    SaleItemOut,
     SaleOut,
-    SalePaymentOut,
     SaleReturnCreate,
-    SaleReturnItemOut,
     SaleReturnOut,
     SessionOut,
     VoidIn,

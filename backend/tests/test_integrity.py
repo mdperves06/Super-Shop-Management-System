@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import func, select
 
-from tests.helpers import ensure_register_open, make_customer, payment_method_id, sell, stock_of, stock_product
+from tests.helpers import ensure_register_open, make_customer, sell, stock_of, stock_product
 
 
 @pytest.fixture(scope="module")
@@ -18,7 +18,6 @@ def desks(client, admin, cashier, manager):
 
 
 def test_concurrent_sales_never_oversell(client, admin, cashier, manager, desks, db_session):
-    from app.models.sales import Sale
 
     prod = stock_product(client, admin, qty=5, price=100)
     users = [cashier, manager] * 4  # 8 simultaneous buyers, 5 units
@@ -116,13 +115,13 @@ def test_ledger_balance_equals_running_total(client, admin, db_session):
 
 def test_alembic_migrations_match_models(tmp_path):
     """The migration chain must produce exactly the schema the models declare."""
-    from alembic import command
     from alembic.autogenerate import compare_metadata
     from alembic.config import Config
     from alembic.migration import MigrationContext
     from sqlalchemy import create_engine
 
     import app.models  # noqa: F401
+    from alembic import command
     from app.core.config import BASE_DIR
     from app.core.database import Base
 

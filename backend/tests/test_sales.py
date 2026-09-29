@@ -1,11 +1,9 @@
-from decimal import Decimal
 
 import pytest
 
 from tests.helpers import (
     ensure_register_open,
     make_customer,
-    make_product,
     payment_method_id,
     sell,
     stock_of,
@@ -20,7 +18,6 @@ def cash_desk(client, cashier):
 
 @pytest.fixture(scope="module")
 def mgr_desk(client, manager, admin):
-    from sqlalchemy import select
     if not any(r["name"] == "Counter 2" for r in client.get("/api/v1/registers", headers=admin).json()):
         client.post("/api/v1/registers", headers=admin, json={"name": "Counter 2"})
     return ensure_register_open(client, manager, opening=1000, register="Counter 2")
@@ -98,6 +95,7 @@ def test_insufficient_stock_and_validation(client, admin, cashier, cash_desk):
 
 def test_multi_line_sale_rolls_back_completely_on_failure(client, admin, cashier, cash_desk, db_session):
     from sqlalchemy import func, select
+
     from app.models.sales import Sale
 
     good = stock_product(client, admin, qty=10)
@@ -232,7 +230,7 @@ def test_void_sale_reverses_everything(client, admin, cashier, manager, cash_des
     assert stock_of(client, admin, prod["id"]) == 10
     assert client.post(f"/api/v1/sales/{sale['id']}/void", headers=manager, json={"reason": "again please"}).status_code == 409
     logs = client.get("/api/v1/audit-logs", headers=admin, params={"entity": "sale", "entity_id": sale["id"]}).json()["items"]
-    assert "sale.void" in [l["action"] for l in logs]
+    assert "sale.void" in [e["action"] for e in logs]
     ret = client.post("/api/v1/sale-returns", headers=manager, json={"sale_id": sale["id"], "reason": "no way", "items": [{"sale_item_id": sale["items"][0]["id"], "quantity": 1}]})
     assert ret.status_code == 409
 
@@ -281,7 +279,9 @@ def test_time_window_promotion(client, admin, cashier, cash_desk):
 
 def test_sold_expired_stock_is_blocked(client, admin, cashier, cash_desk, db_session):
     from datetime import date, timedelta
+
     from sqlalchemy import update
+
     from app.models.inventory import InventoryBatch
 
     prod = stock_product(client, admin, qty=10, track_expiry=True)

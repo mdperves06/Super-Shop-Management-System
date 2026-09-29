@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -33,7 +33,7 @@ def new_opaque_token() -> str:
 
 
 def _encode(payload: dict[str, Any], secret: str, expires: timedelta) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     body = {**payload, "iat": now, "exp": now + expires}
     return jwt.encode(body, secret, algorithm="HS256")
 

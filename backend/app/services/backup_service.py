@@ -8,9 +8,8 @@ import re
 import shutil
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlparse
 
 from sqlalchemy.engine import make_url
 
@@ -31,7 +30,7 @@ def _sqlite_path() -> Path:
 
 
 def create_backup(label: str = "") -> Path:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     suffix = f"-{label}" if label else ""
     if settings.is_sqlite:
         target = backup_dir() / f"shop-{stamp}{suffix}.db"
@@ -64,7 +63,7 @@ def list_backups() -> list[dict]:
     for f in sorted(backup_dir().iterdir(), reverse=True):
         if NAME_RE.match(f.name):
             st = f.stat()
-            out.append({"name": f.name, "size": st.st_size, "created_at": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()})
+            out.append({"name": f.name, "size": st.st_size, "created_at": datetime.fromtimestamp(st.st_mtime, UTC).isoformat()})
     return out
 
 

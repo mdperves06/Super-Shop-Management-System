@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_, select
 
 from app.api.deps import DB, Pagination, require

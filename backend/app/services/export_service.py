@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from app.models.auth import User
 from app.models.catalog import Product
 from app.models.customers import Customer
-from app.models.inventory import Inventory
 from app.models.purchasing import PurchaseOrder, Supplier
 from app.models.sales import Sale
 from app.services.report_service import Report, col
@@ -102,9 +101,9 @@ def dataset(db: Session, name: str, user: User) -> Report:
                          "track_expiry": "yes" if p.track_expiry else "no", "active": "yes" if p.is_active else "no"})
         return Report("Products", cols, rows)
     if name == "inventory":
-        from app.services import report_service
-        from app.utils.dates import range_bounds
         from datetime import date
+
+        from app.services import report_service
 
         f = report_service.Filters(lo=None, hi=None, start=date.today(), end=date.today(), tz=None, limit=MAX_EXPORT_ROWS)  # type: ignore[arg-type]
         return report_service.current_inventory(db, f, "product.cost" in codes)

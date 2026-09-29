@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, Pagination, require
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError
 from app.models.auth import User
 from app.models.base import utcnow
 from app.models.enums import LedgerType
@@ -27,10 +27,8 @@ from app.schemas.purchasing import (
     PaymentIn,
     PaymentOut,
     PurchaseCreate,
-    PurchaseItemOut,
     PurchaseOut,
     PurchaseReturnCreate,
-    PurchaseReturnItemOut,
     PurchaseReturnOut,
     PurchaseUpdate,
     ReceiveIn,

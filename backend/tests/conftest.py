@@ -13,12 +13,12 @@ os.environ["LOGIN_RATE_LIMIT_PER_MINUTE"] = "100000"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 from app.core.database import SessionLocal  # noqa: E402
 from app.main import app, initialise_database  # noqa: E402
 from app.models.auth import Role  # noqa: E402
 from app.services import auth_service  # noqa: E402
-from sqlalchemy import select  # noqa: E402
 
 PASSWORD = "Test-Pass-123"
 ROLE_USERS = {

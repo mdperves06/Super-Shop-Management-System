@@ -1,4 +1,3 @@
-from decimal import Decimal
 
 from tests.conftest import PASSWORD
 from tests.helpers import make_customer, payment_method_id, sell, stock_product, uid
@@ -44,7 +43,7 @@ def test_cash_register_reconciliation_with_discrepancy(client, admin):
     c = closed.json()
     assert c["expected_cash"] == 14000 and c["actual_cash"] == 13500 and c["difference"] == -500 and c["status"] == "CLOSED"
     logs = client.get("/api/v1/audit-logs", headers=admin, params={"entity": "cash_session", "entity_id": session["id"]}).json()["items"]
-    close_log = next(l for l in logs if l["action"] == "register.close")
+    close_log = next(e for e in logs if e["action"] == "register.close")
     assert close_log["new_value"]["difference"] == "-500.00" and close_log["new_value"]["reason"] == "Change given by mistake"
     notes = client.get("/api/v1/notifications", headers=admin, params={"type": "cash_discrepancy"}).json()
     assert any("-500" in n["message"] for n in notes["items"])

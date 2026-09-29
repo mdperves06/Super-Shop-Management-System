@@ -10,7 +10,7 @@ from app.models.auth import User
 from app.models.finance import PaymentMethod
 from app.models.system import AuditLog
 from app.repositories.base import like, page_response, paginate
-from app.schemas.common import Num, ORMModel, Page, UTCDateTime
+from app.schemas.common import ORMModel, Page, UTCDateTime
 from app.services import audit, settings_service
 from app.utils.dates import get_tz, range_bounds
 from app.utils.uploads import IMAGE_TYPES, save_upload
@@ -79,7 +79,6 @@ class SettingsUpdate(BaseModel):
 
 @router.put("/settings")
 def update_settings(body: SettingsUpdate, request: Request, db: DB, user: Annotated[User, Depends(require("settings.update"))]):
-    from app.core.errors import ValidationFailed
 
     old_new: dict[str, dict[str, Any]] = {}
     for key, value in body.values.items():

@@ -9,7 +9,7 @@ Definitions (also documented in docs/FINANCE.md):
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -17,10 +17,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.finance import Expense
-from app.models.purchasing import PurchaseReturn, GoodsReceipt
-from app.models.sales import Sale, SaleItem, SaleReturn, SaleReturnItem
-from app.services.pricing import gross_profit, q2
-from app.utils.dates import range_bounds
+from app.models.purchasing import GoodsReceipt, PurchaseReturn
+from app.models.sales import Sale, SaleReturn
+from app.services.pricing import gross_profit
 from app.utils.sqlx import local_bucket, utc_offset_minutes
 
 ZERO = Decimal("0")
@@ -74,7 +73,6 @@ def financial_summary(db: Session, lo: datetime, hi: datetime, tz: ZoneInfo, *, 
     fin.gross_profit = gross_profit(fin.revenue, fin.cogs)
 
     if with_expenses:
-        first = lo.replace(tzinfo=None)
         start_local, end_local = _local_dates(lo, hi, tz)
         fin.expenses = _d(db.scalar(select(func.coalesce(func.sum(Expense.amount), 0)).where(
             Expense.status == "ACTIVE", Expense.is_deleted.is_(False), Expense.expense_date >= start_local, Expense.expense_date <= end_local)))
@@ -88,10 +86,10 @@ def financial_summary(db: Session, lo: datetime, hi: datetime, tz: ZoneInfo, *, 
 
 
 def _local_dates(lo: datetime, hi: datetime, tz: ZoneInfo) -> tuple[date, date]:
-    from datetime import timedelta, timezone
+    from datetime import timedelta
 
-    a = lo.replace(tzinfo=timezone.utc).astimezone(tz).date()
-    b = (hi - timedelta(seconds=1)).replace(tzinfo=timezone.utc).astimezone(tz).date()
+    a = lo.replace(tzinfo=UTC).astimezone(tz).date()
+    b = (hi - timedelta(seconds=1)).replace(tzinfo=UTC).astimezone(tz).date()
     return a, b
 
 

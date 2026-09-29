@@ -5,6 +5,7 @@ Built-in PDF fonts cannot draw the Taka sign or Bangla glyphs, so documents use 
 """
 
 import io
+from datetime import UTC
 from decimal import Decimal
 
 from reportlab.lib import colors
@@ -32,10 +33,9 @@ def _shop(db: Session) -> dict:
 
 
 def _local(db: Session, dt) -> str:  # noqa: ANN001
-    from datetime import timezone
 
     tz = get_tz(settings_service.get(db, "locale.timezone"))
-    return dt.replace(tzinfo=timezone.utc).astimezone(tz).strftime("%d/%m/%Y %I:%M %p")
+    return dt.replace(tzinfo=UTC).astimezone(tz).strftime("%d/%m/%Y %I:%M %p")
 
 
 def receipt_pdf(db: Session, sale: Sale) -> bytes:
@@ -127,7 +127,6 @@ def _a4(db: Session, title: str, meta: list[tuple[str, str]], body: list, footer
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=14 * mm, title=title)
     st = getSampleStyleSheet()
-    big = ParagraphStyle("big", parent=st["Title"], alignment=0, fontSize=18, spaceAfter=2)
     small = ParagraphStyle("small", parent=st["Normal"], fontSize=8.5, textColor=colors.HexColor("#4b5563"))
     head = Table([[Paragraph(f"<b>{shop.get('shop.name', 'Super Shop')}</b><br/>{shop.get('shop.address', '')}<br/>Tel {shop.get('shop.phone', '')}"
                              f"{'<br/>BIN ' + str(shop['shop.bin']) if shop.get('shop.bin') else ''}", small),

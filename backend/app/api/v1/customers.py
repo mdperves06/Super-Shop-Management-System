@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, Pagination, require
-from app.core.errors import ConflictError, NotFoundError, ValidationFailed
+from app.core.errors import ConflictError, NotFoundError
 from app.models.auth import User
 from app.models.base import utcnow
 from app.models.customers import Customer, CustomerAddress, CustomerTransaction

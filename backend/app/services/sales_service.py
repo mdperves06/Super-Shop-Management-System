@@ -4,7 +4,6 @@ Each public function is a single unit of work: it either completes fully (sale +
 payments + cash + ledger + audit) or raises, and the caller's rollback leaves nothing behind.
 """
 
-from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -26,7 +25,7 @@ from app.models.sales import (
 )
 from app.schemas.sales import CartIn, SaleCreate, SaleReturnCreate
 from app.services import audit, cash_service, inventory_service, ledger, notification_service, numbering, settings_service
-from app.services.pricing import Cart, CalcLine, LineRequest, calculate_cart, q2
+from app.services.pricing import CalcLine, Cart, LineRequest, calculate_cart, q2
 
 ZERO = Decimal("0")
 

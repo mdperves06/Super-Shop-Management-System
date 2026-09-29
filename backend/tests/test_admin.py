@@ -77,7 +77,7 @@ def test_backup_create_list_download_and_permissions(client, tokens):
 
 
 def test_backup_restore_roundtrip(tmp_path, monkeypatch):
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine
 
     from app.core import database
     from app.core.config import settings
@@ -152,7 +152,7 @@ def test_settings_permissions_and_validation(client, admin, cashier, manager):
 
 
 def test_tax_rate_configuration_and_effective_dates(client, admin):
-    from tests.helpers import ensure_register_open, sell, stock_product
+    from tests.helpers import stock_product
 
     r = client.post("/api/v1/tax-rates", headers=admin, json={"name": "Future VAT", "rate": 20, "effective_from": "2999-01-01"})
     assert r.status_code == 201

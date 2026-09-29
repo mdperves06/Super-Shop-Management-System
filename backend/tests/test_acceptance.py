@@ -96,5 +96,5 @@ def test_full_business_day(client):
     # --- ledgers, audit trail
     ledger = client.get(f"/api/v1/suppliers/{sup['id']}/ledger", headers=A).json()["items"]
     assert [(r["txn_type"], r["balance_after"]) for r in ledger] == [("PAYMENT", 6000), ("PURCHASE", 10000)]
-    actions = {l["action"] for l in client.get("/api/v1/audit-logs", headers=A, params={"page_size": 200}).json()["items"]}
+    actions = {e["action"] for e in client.get("/api/v1/audit-logs", headers=A, params={"page_size": 200}).json()["items"]}
     assert {"purchase.approve", "purchase.receive", "sale.create", "sale.return", "register.close", "supplier.payment", "product.create"} <= actions

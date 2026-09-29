@@ -5,7 +5,7 @@ these numbers by calling the same code path (`POST /sales/preview`).
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
@@ -65,7 +65,7 @@ def promotion_is_live(promo: Promotion, now_utc: datetime, tz_name: str) -> bool
         return False
     if promo.end_at and now_utc > promo.end_at:
         return False
-    local = now_utc.replace(tzinfo=timezone.utc).astimezone(get_tz(tz_name))
+    local = now_utc.replace(tzinfo=UTC).astimezone(get_tz(tz_name))
     if promo.days_of_week:
         days = {int(d) for d in promo.days_of_week.split(",") if d.strip().isdigit()}
         if days and local.weekday() not in days:
@@ -172,10 +172,10 @@ def calculate_cart(
 ) -> Cart:
     if not lines:
         raise ValidationFailed("The cart is empty")
-    now_utc = now_utc or datetime.now(timezone.utc).replace(tzinfo=None)
+    now_utc = now_utc or datetime.now(UTC).replace(tzinfo=None)
     tz_name = settings_service.get(db, "locale.timezone")
     inclusive = settings_service.get_bool(db, "tax.prices_include_tax")
-    today = now_utc.replace(tzinfo=timezone.utc).astimezone(get_tz(tz_name)).date()
+    today = now_utc.replace(tzinfo=UTC).astimezone(get_tz(tz_name)).date()
 
     promos = [p for p in db.scalars(select(Promotion).where(Promotion.is_active.is_(True)))
               if promotion_is_live(p, now_utc, tz_name)]

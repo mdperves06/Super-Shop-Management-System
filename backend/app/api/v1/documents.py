@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 
 from app.api.deps import DB, has_permission, require
+from app.api.v1.customers import get_customer
 from app.core.errors import PermissionDenied
 from app.models.auth import User
 from app.services import payment_service, pdf_service, purchase_service, sales_service
-from app.api.v1.customers import get_customer
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 

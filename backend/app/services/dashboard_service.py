@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.auth import User
 from app.models.catalog import Product, ProductCategory
 from app.models.customers import Customer
-from app.models.purchasing import GoodsReceipt, PurchaseOrder, PurchaseReturn, Supplier
+from app.models.purchasing import PurchaseOrder, Supplier
 from app.models.sales import Sale, SaleItem, SaleReturn
 from app.services import financials, inventory_queries, notification_service, settings_service
 from app.utils.dates import get_tz, range_bounds, resolve_period

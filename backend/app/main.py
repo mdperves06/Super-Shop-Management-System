@@ -5,16 +5,16 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import SessionLocal, engine
 from app.core.errors import AppError
-from app.utils.uploads import upload_root
 from app.middleware.common import RateLimitMiddleware, RequestContextMiddleware, SecurityHeadersMiddleware
+from app.utils.uploads import upload_root
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
@@ -30,9 +30,9 @@ def _error(status: int, code: str, message: str, details=None, request: Request 
 
 def initialise_database() -> None:
     """Development convenience: apply migrations and reference data on start-up."""
-    from alembic import command
     from alembic.config import Config
 
+    from alembic import command
     from app.core.config import BASE_DIR
     from app.services.bootstrap import ensure_reference_data
 

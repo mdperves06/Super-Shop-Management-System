@@ -1,6 +1,6 @@
 """Small dialect helpers for grouping timestamps in the shop's local time."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 
 def utc_offset_minutes(tz: ZoneInfo, at: datetime | None = None) -> int:
-    at = at or datetime.now(timezone.utc)
+    at = at or datetime.now(UTC)
     off = at.astimezone(tz).utcoffset() or timedelta(0)
     return int(off.total_seconds() // 60)
 
