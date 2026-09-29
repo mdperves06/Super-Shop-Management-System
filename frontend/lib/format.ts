@@ -18,15 +18,15 @@ export function getFormatConfig(): FormatConfig {
   return config
 }
 
-const numberFmt = new Intl.NumberFormat("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const intFmt = new Intl.NumberFormat("en-BD", { maximumFractionDigits: 0 })
-const qtyFmt = new Intl.NumberFormat("en-BD", { maximumFractionDigits: 3 })
+const numberFmt = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const intFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 })
+const qtyFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 })
 
 export function formatMoney(value: number | null | undefined, opts?: { symbol?: boolean; compact?: boolean }): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—"
   const sym = opts?.symbol === false ? "" : config.currencySymbol
   if (opts?.compact && Math.abs(value) >= 100_000) {
-    const f = new Intl.NumberFormat("en-BD", { notation: "compact", maximumFractionDigits: 2 })
+    const f = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 2 })
     return `${value < 0 ? "-" : ""}${sym}${f.format(Math.abs(value))}`
   }
   const abs = numberFmt.format(Math.abs(value))
@@ -41,7 +41,7 @@ export function formatNumber(value: number | null | undefined, digits?: number):
 
 export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—"
-  return `${new Intl.NumberFormat("en-BD", { maximumFractionDigits: 2 }).format(value)}%`
+  return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}%`
 }
 
 function parts(date: Date, opts: Intl.DateTimeFormatOptions) {

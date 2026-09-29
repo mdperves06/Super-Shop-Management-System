@@ -24,6 +24,23 @@ interface PayLine {
 const ICON: Record<string, typeof Banknote> = { CASH: Banknote, CARD: CreditCard, MOBILE: Smartphone, BANK: Landmark, OTHER: Landmark }
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/**
+ * Mirrors how the server settles a payment (only cash can produce change; card/mobile cannot be over-tendered).
+ * Display only: the server recomputes and validates every sale.
+ */
+export function settlePayment(lines: { amount: number; isCash: boolean }[], total: number) {
+  let cashTendered = 0, other = 0
+  for (const l of lines) {
+    if (l.isCash) cashTendered += l.amount
+    else other += l.amount
+  }
+  const cashNeeded = Math.max(total - other, 0)
+  const change = round2(Math.max(cashTendered - cashNeeded, 0))
+  const applied = round2(Math.min(cashTendered, cashNeeded) + other)
+  const due = round2(Math.max(total - applied, 0))
+  return { cashTendered, other, change, applied, due, overOther: other > total + 0.001 }
+}
+
 export function PaymentDialog({ open, onClose, total, payload, customerName, hasCustomer, creditAvailable, onDone }: {
   open: boolean
   onClose: () => void
@@ -55,19 +72,7 @@ export function PaymentDialog({ open, onClose, total, payload, customerName, has
   }, [open, cash])
 
   const byId = useMemo(() => new Map<number, PaymentMethod>((methods.data ?? []).map((m) => [m.id, m])), [methods.data])
-  const calc = useMemo(() => {
-    let cashTendered = 0, other = 0
-    for (const l of lines) {
-      const a = Number(l.amount) || 0
-      if (byId.get(l.methodId)?.method_type === "CASH") cashTendered += a
-      else other += a
-    }
-    const cashNeeded = Math.max(total - other, 0)
-    const change = round2(Math.max(cashTendered - cashNeeded, 0))
-    const applied = round2(Math.min(cashTendered, cashNeeded) + other)
-    const due = round2(Math.max(total - applied, 0))
-    return { cashTendered, other, change, applied, due, overOther: other > total + 0.001 }
-  }, [lines, byId, total])
+  const calc = useMemo(() => settlePayment(lines.map((l) => ({ amount: Number(l.amount) || 0, isCash: byId.get(l.methodId)?.method_type === "CASH" })), total), [lines, byId, total])
 
   const creditOk = calc.due === 0 || (hasCustomer && can("sale.credit") && (creditAvailable ?? 0) + 0.001 >= calc.due)
   const creditMessage = calc.due > 0
