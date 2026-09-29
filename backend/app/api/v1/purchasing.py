@@ -180,7 +180,7 @@ def _po_out(po: PurchaseOrder) -> PurchaseOut:
     out = PurchaseOut.model_validate(po)
     out.supplier_name = po.supplier.name
     for item_out, item in zip(out.items, po.items):
-        item_out.product_name, item_out.sku = item.product.name, item.product.sku
+        item_out.product_name, item_out.sku, item_out.track_expiry = item.product.name, item.product.sku, item.product.track_expiry
     return out
 
 

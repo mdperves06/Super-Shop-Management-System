@@ -148,6 +148,7 @@ class PurchaseItemOut(ORMModel):
     product_id: int
     product_name: str | None = None
     sku: str | None = None
+    track_expiry: bool = False
     quantity: Num
     received_quantity: Num
     returned_quantity: Num
