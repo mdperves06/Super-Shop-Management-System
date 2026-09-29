@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-09-30 02:38:19.518984
+Create Date: 2026-09-30 04:01:07.937481
 
 """
 from typing import Sequence, Union
@@ -47,7 +47,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('code')
@@ -135,7 +135,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
@@ -151,7 +151,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['parent_id'], ['product_categories.id'], ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id'),
@@ -214,7 +214,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('code')
@@ -253,7 +253,7 @@ def upgrade() -> None:
     sa.Column('max_discount_percent', sa.Numeric(precision=14, scale=2), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
@@ -353,7 +353,7 @@ def upgrade() -> None:
     sa.Column('national_id', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
@@ -411,7 +411,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.CheckConstraint('purchase_price >= 0', name='ck_product_purchase_price'),
     sa.CheckConstraint('selling_price >= 0', name='ck_product_selling_price'),
@@ -570,7 +570,7 @@ def upgrade() -> None:
     sa.Column('created_by', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('is_deleted', sa.Boolean(), server_default='0', nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['category_id'], ['expense_categories.id'], ),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='SET NULL'),

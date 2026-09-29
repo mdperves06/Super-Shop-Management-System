@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Numeric, func
+from sqlalchemy import Boolean, DateTime, Numeric, false, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 Money = Numeric(14, 2)
@@ -25,5 +25,5 @@ class TimestampMixin:
 
 
 class SoftDeleteMixin:
-    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False, index=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

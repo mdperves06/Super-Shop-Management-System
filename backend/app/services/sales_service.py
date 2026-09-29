@@ -35,7 +35,7 @@ ZERO = Decimal("0")
 def get_sale(db: Session, sale_id: int, *, lock: bool = False) -> Sale:
     stmt = select(Sale).where(Sale.id == sale_id)
     if lock:
-        stmt = stmt.with_for_update()
+        stmt = stmt.with_for_update(of=Sale)
     sale = db.scalars(stmt).unique().first()
     if not sale:
         raise NotFoundError("Sale not found")
@@ -91,6 +91,7 @@ def create_sale(db: Session, data: SaleCreate, user: User) -> Sale:
         raise ConflictError("Open a cash register session before selling", code="register_not_open")
 
     cart, customer = build_cart(db, data)
+    inventory_service.lock_products(db, [ln.product.id for ln in cart.lines])
     allowed, cap = check_discount_allowed(db, cart, user)
     if not allowed:
         raise PermissionDenied(
@@ -235,6 +236,7 @@ def void_sale(db: Session, sale: Sale, reason: str, user: User) -> Sale:
     if cash_paid > 0 and session is None:
         raise ConflictError("Open a register session to refund the cash from this sale", code="register_not_open")
 
+    inventory_service.lock_products(db, [i.product_id for i in sale.items])
     for item in sale.items:
         inventory_service.restock(
             db, item.product, [(a.batch_id, a.quantity - a.returned_quantity, a.unit_cost) for a in item.allocations],
@@ -267,6 +269,7 @@ def create_return(db: Session, data: SaleReturnCreate, user: User) -> SaleReturn
     if sale.status != "COMPLETED":
         raise ConflictError("Cannot return items from a voided sale")
     items = {i.id: i for i in sale.items}
+    inventory_service.lock_products(db, [i.product_id for i in sale.items])
     seen: set[int] = set()
     total = tax_total = cogs_total = ZERO
     ret = SaleReturn(return_number=numbering.next_number(db, settings_service.get(db, "numbering.return_prefix")),

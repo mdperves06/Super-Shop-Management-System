@@ -36,7 +36,7 @@ RECEIVABLE = {PurchaseStatus.APPROVED.value, PurchaseStatus.PARTIALLY_RECEIVED.v
 def get_purchase(db: Session, purchase_id: int, *, lock: bool = False) -> PurchaseOrder:
     stmt = select(PurchaseOrder).where(PurchaseOrder.id == purchase_id)
     if lock:
-        stmt = stmt.with_for_update()
+        stmt = stmt.with_for_update(of=PurchaseOrder)
     po = db.scalars(stmt).unique().first()
     if not po:
         raise NotFoundError("Purchase order not found")
@@ -139,6 +139,7 @@ def receive(db: Session, po: PurchaseOrder, data: ReceiveIn, user: User) -> Good
     if po.status not in RECEIVABLE:
         raise ConflictError("Only approved purchase orders can receive stock", code="purchase_not_receivable")
     items = {i.id: i for i in po.items}
+    inventory_service.lock_products(db, [i.product_id for i in po.items])
     seen: set[int] = set()
     grn = GoodsReceipt(grn_number=numbering.next_number(db, "GRN"), purchase_id=po.id, received_by=user.id, notes=data.notes)
     db.add(grn)

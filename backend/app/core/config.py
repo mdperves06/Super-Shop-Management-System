@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "no-reply@supershop.local"
 
+    @field_validator("database_url")
+    @classmethod
+    def _db_url(cls, v: str) -> str:
+        # Render/Heroku-style URLs use postgres:// or postgresql://; SQLAlchemy needs the driver name.
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
     @field_validator("environment")
     @classmethod
     def _env(cls, v: str) -> str:

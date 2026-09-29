@@ -316,11 +316,20 @@ def _history(db, rng, days, users, products, customers, suppliers):  # noqa: ANN
         db.refresh(p)
     counter = 0
 
-    for back in range(days, 0, -1):
-        day = datetime.now(UTC).replace(tzinfo=None, hour=3, minute=0, second=0, microsecond=0) - timedelta(days=back)
+    now_utc = datetime.now(UTC).replace(tzinfo=None)
+    for back in range(days, -1, -1):
+        shop_today = (now_utc + timedelta(hours=6)).date()  # Asia/Dhaka calendar date
+        day = datetime.combine(shop_today, datetime.min.time()).replace(hour=3) - timedelta(days=back)
+        # `day` is 09:00 shop time. Today only gets sales that already "happened".
+        elapsed = int((now_utc - day).total_seconds() // 60)
+        if back == 0 and elapsed < 45:
+            continue
+        span = 750 if back else min(elapsed - 5, 750)
         cashier = cashiers[back % 2]
         session = cash_service.open_session(db, cashier, register.id, Decimal("10000"))
         n_sales = rng.randint(6, 16) if day.weekday() != 4 else rng.randint(12, 22)
+        if back == 0:
+            n_sales = max(3, n_sales // 2)
         stamps = []
         for _ in range(n_sales):
             in_stock = [p for p in sellable if p.current_stock > 8]
@@ -352,7 +361,7 @@ def _history(db, rng, days, users, products, customers, suppliers):  # noqa: ANN
             except Exception:  # noqa: BLE001 - demo generator only
                 continue
             # `day` is 09:00 shop time (03:00 UTC); trading hours run 09:00-21:30
-            stamps.append((sale.id, day + timedelta(minutes=rng.randint(0, 750))))
+            stamps.append((sale.id, day + timedelta(minutes=rng.randint(0, span))))
             counter += 1
         # occasional return
         if stamps and rng.random() < 0.4:
@@ -376,7 +385,7 @@ def _history(db, rng, days, users, products, customers, suppliers):  # noqa: ANN
             db.execute(update(SalePayment).where(SalePayment.sale_id == sid).values(created_at=when))
             db.execute(update(InventoryTransaction).where(InventoryTransaction.reference_type == "sale", InventoryTransaction.reference_id == sid).values(created_at=when))
             db.execute(update(CustomerTransaction).where(CustomerTransaction.reference_type == "sale", CustomerTransaction.reference_id == sid).values(created_at=when))
-        close_at = day + timedelta(hours=12)
+        close_at = min(day + timedelta(hours=12), now_utc)
         db.execute(update(CashRegisterSession).where(CashRegisterSession.id == session.id).values(opened_at=day, closed_at=close_at))
         db.execute(update(CashTransaction).where(CashTransaction.session_id == session.id).values(created_at=day + timedelta(hours=1)))
         for r in db.scalars(select(SaleReturn).where(SaleReturn.session_id == session.id)):

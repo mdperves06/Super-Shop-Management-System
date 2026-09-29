@@ -27,7 +27,7 @@ describe("api client", () => {
 
   it("never shows raw server errors to users", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(json(500, { error: { code: "internal_error", message: "Traceback ... psycopg" } }))
-    const err = await api.get("/x").catch((e) => e as ApiError)
+    const err = (await api.get("/x").catch((e: unknown) => e)) as ApiError
     expect(err.message).toBe("Something went wrong on the server. Please try again.")
   })
 

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CategoryDonut, InventoryDonut, ProfitChart, SalesChart, TopProductsChart } from "@/features/dashboard/charts"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import { formatDateTime, formatMoney, formatNumber } from "@/lib/format"
+import { formatDate, formatDateTime, formatMoney, formatNumber } from "@/lib/format"
 import { useT } from "@/lib/i18n"
 import type { Dashboard } from "@/types/api"
 
@@ -40,7 +40,7 @@ export function DashboardView() {
     <>
       <PageHeader
         title={t("dashboard.title")}
-        description={`Welcome back, ${user?.full_name.split(" ")[0]}. ${data ? `${data.period.start === data.period.end ? data.period.start : `${data.period.start} → ${data.period.end}`}` : ""}`}
+        description={`Welcome back, ${user?.full_name.split(" ")[0]}. ${data ? `${data.period.start === data.period.end ? formatDate(data.period.start) : `${formatDate(data.period.start)} → ${formatDate(data.period.end)}`}` : ""}`}
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 

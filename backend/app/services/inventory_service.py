@@ -39,6 +39,14 @@ def _lock_inventory(db: Session, product_id: int) -> Inventory:
     return inv
 
 
+def lock_products(db: Session, product_ids: list[int]) -> None:
+    """Lock inventory rows in ascending id order so two carts with the same products in different
+    orders can never deadlock each other (PostgreSQL); a no-op lock on SQLite."""
+    ids = sorted(set(product_ids))
+    if ids:
+        db.execute(select(Inventory.id).where(Inventory.product_id.in_(ids)).order_by(Inventory.product_id).with_for_update())
+
+
 def _expire_inventory(db: Session, product_id: int) -> None:
     """Core UPDATEs bypass the ORM; drop any cached Inventory instance so it reloads fresh."""
     for obj in list(db.identity_map.values()):
@@ -144,7 +152,7 @@ def issue_stock(
     elif not allow_expired:
         stmt = stmt.where((InventoryBatch.expiry_date.is_(None)) | (InventoryBatch.expiry_date >= today))
     stmt = stmt.order_by(InventoryBatch.expiry_date.is_(None), InventoryBatch.expiry_date,
-                         InventoryBatch.received_at, InventoryBatch.id).with_for_update()
+                         InventoryBatch.received_at, InventoryBatch.id).with_for_update(of=InventoryBatch)
     allocations: list[Allocation] = []
     remaining = qty
     for batch in db.scalars(stmt).all():
