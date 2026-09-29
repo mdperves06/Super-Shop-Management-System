@@ -6,12 +6,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import SessionLocal, engine
 from app.core.errors import AppError
+from app.utils.uploads import upload_root
 from app.middleware.common import RateLimitMiddleware, RequestContextMiddleware, SecurityHeadersMiddleware
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -109,6 +111,10 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=200 if healthy else 503, content={"status": "healthy" if healthy else "degraded", "checks": checks})
 
     app.include_router(api_router)
+    # Only product images/logos are public (needed by <img>); attachments go through authenticated endpoints.
+    media = upload_root() / "products"
+    media.mkdir(parents=True, exist_ok=True)
+    app.mount("/media/products", StaticFiles(directory=str(media)), name="product-media")
     return app
 
 

@@ -17,7 +17,11 @@ def _clean(value: Any) -> Any:
     if isinstance(value, (list, tuple, set)):
         return [_clean(v) for v in value]
     if isinstance(value, Decimal):
-        return str(value)
+        # stable text form so 150 and 150.00 compare equal in old/new diffs
+        text = format(value.normalize(), "f")
+        if "." not in text:
+            return text + ".00"
+        return text + "0" if len(text.split(".")[1]) == 1 else text
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     return value
