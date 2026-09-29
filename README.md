@@ -94,7 +94,7 @@ Documentation:
 
 ```bash
 # backend (from backend/)
-pytest                                   # 88 tests: auth, RBAC, catalogue, inventory, purchasing, POS, returns,
+pytest                                   # 96 tests: auth, RBAC, catalogue, inventory, purchasing, POS, returns,
                                          # cash register, reports, imports, backups, concurrency, migrations
 ruff check .                             # lint
 alembic revision --autogenerate -m "…"   # new migration after changing models

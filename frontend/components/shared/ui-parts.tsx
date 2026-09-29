@@ -64,7 +64,7 @@ export function StatCard({ label, value, hint, icon, tone = "neutral", href, loa
       <CardContent className="flex items-start justify-between gap-3 p-4">
         <div className="min-w-0">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-28" /> : <p className={cn("mt-1 truncate text-2xl font-semibold tabular", tone === "danger" && "text-destructive", tone === "warning" && "text-[oklch(0.55_0.13_70)] dark:text-warning", tone === "success" && "text-success")}>{value}</p>}
+          {loading ? <Skeleton className="mt-2 h-7 w-28" /> : <p className={cn("mt-1 text-xl leading-tight font-semibold break-words tabular xl:text-2xl", tone === "danger" && "text-destructive", tone === "warning" && "text-[oklch(0.55_0.13_70)] dark:text-warning", tone === "success" && "text-success")}>{value}</p>}
           {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
         {icon && <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">{icon}</span>}

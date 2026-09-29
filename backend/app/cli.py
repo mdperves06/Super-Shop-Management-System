@@ -14,9 +14,9 @@ from sqlalchemy import select
 
 
 def cmd_migrate() -> None:
-    from alembic import command
     from alembic.config import Config
 
+    from alembic import command
     from app.core.config import BASE_DIR
     from app.core.database import SessionLocal
     from app.services.bootstrap import ensure_reference_data

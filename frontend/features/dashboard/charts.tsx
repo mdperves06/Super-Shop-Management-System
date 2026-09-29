@@ -37,8 +37,25 @@ const moneyAxis = (v: number) => formatMoney(v, { symbol: false, compact: true }
 export function SalesChart({ data, granularity }: { data: Dashboard["series"]; granularity: string }) {
   if (data.length === 0 || data.every((d) => d.sales === 0)) return <Empty />
   const rows = data.map((d) => ({ ...d, label: bucketLabel(d.bucket, granularity) }))
+  const label = `Sales over time, total ${formatMoney(rows.reduce((s, r) => s + r.sales, 0))}`
+  // hourly views and near-empty periods read better as bars than as a line through one or two points
+  if (granularity === "hour" || rows.filter((r) => r.sales !== 0).length <= 2) {
+    return (
+      <div role="img" aria-label={label} className="h-64 w-full">
+        <ResponsiveContainer>
+          <BarChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={12} />
+            <YAxis {...axisProps} width={52} tickFormatter={moneyAxis} />
+            <Tooltip contentStyle={tooltipStyle()} formatter={(v) => [formatMoney(Number(v)), "Sales"]} cursor={{ fill: "var(--muted)" }} />
+            <Bar dataKey="sales" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={36} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    )
+  }
   return (
-    <div role="img" aria-label={`Sales over time, total ${formatMoney(rows.reduce((s, r) => s + r.sales, 0))}`} className="h-64 w-full">
+    <div role="img" aria-label={label} className="h-64 w-full">
       <ResponsiveContainer>
         <AreaChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
           <defs>

@@ -51,18 +51,18 @@ export function DashboardView() {
       )}
 
       <section aria-label="Key figures" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard loading={loading} label={t("dashboard.sales")} value={formatMoney(k?.sales_total)} icon={<ShoppingBag className="size-[18px]" />}
+        <StatCard loading={loading} label={t("dashboard.sales")} value={formatMoney(k?.sales_total, { whole: true })} icon={<ShoppingBag className="size-[18px]" />}
           hint={k ? `${formatNumber(k.invoices, 0)} invoices${k.returns_total ? ` · ${formatMoney(k.returns_total)} returned` : ""}` : undefined} href="/sales" />
-        {finance && <StatCard loading={loading} label={t("dashboard.profit")} value={formatMoney(k?.profit)} icon={<TrendingUp className="size-[18px]" />} tone={k && (k.profit ?? 0) < 0 ? "danger" : "neutral"}
+        {finance && <StatCard loading={loading} label={t("dashboard.profit")} value={formatMoney(k?.profit, { whole: true })} icon={<TrendingUp className="size-[18px]" />} tone={k && (k.profit ?? 0) < 0 ? "danger" : "neutral"}
           hint={k?.net_profit !== null && k?.net_profit !== undefined ? `Net after expenses ${formatMoney(k.net_profit)}` : undefined} href="/reports/profit" />}
-        {finance && <StatCard loading={loading} label={t("dashboard.purchases")} value={formatMoney(k?.purchases)} icon={<Package className="size-[18px]" />} href="/purchases" />}
-        {finance && <StatCard loading={loading} label={t("dashboard.stockValue")} value={formatMoney(k?.stock_value)} icon={<PiggyBank className="size-[18px]" />} href="/reports/inventory" />}
+        {finance && <StatCard loading={loading} label={t("dashboard.purchases")} value={formatMoney(k?.purchases, { whole: true })} icon={<Package className="size-[18px]" />} href="/purchases" />}
+        {finance && <StatCard loading={loading} label={t("dashboard.stockValue")} value={formatMoney(k?.stock_value, { whole: true })} icon={<PiggyBank className="size-[18px]" />} href="/reports/inventory" />}
         {canInventory && <StatCard loading={loading} label={t("dashboard.lowStock")} value={formatNumber(k?.low_stock, 0)} tone={(k?.low_stock ?? 0) > 0 ? "warning" : "neutral"} icon={<AlertTriangle className="size-[18px]" />}
           hint={k && k.out_of_stock ? `${k.out_of_stock} out of stock` : undefined} href="/inventory/low-stock" />}
         {canInventory && <StatCard loading={loading} label={t("dashboard.expiring")} value={formatNumber(k?.expiring_soon, 0)} tone={(k?.expiring_soon ?? 0) > 0 ? "warning" : "neutral"} icon={<CalendarClock className="size-[18px]" />}
           hint={k && k.expired ? `${k.expired} already expired` : undefined} href="/inventory/expiring" />}
-        {finance && <StatCard loading={loading} label={t("dashboard.payables")} value={formatMoney(k?.supplier_payables)} icon={<Wallet className="size-[18px]" />} href="/suppliers" />}
-        {finance && <StatCard loading={loading} label={t("dashboard.receivables")} value={formatMoney(k?.customer_receivables)} icon={<HandCoins className="size-[18px]" />} href="/customers" />}
+        {finance && <StatCard loading={loading} label={t("dashboard.payables")} value={formatMoney(k?.supplier_payables, { whole: true })} icon={<Wallet className="size-[18px]" />} href="/suppliers" />}
+        {finance && <StatCard loading={loading} label={t("dashboard.receivables")} value={formatMoney(k?.customer_receivables, { whole: true })} icon={<HandCoins className="size-[18px]" />} href="/customers" />}
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">

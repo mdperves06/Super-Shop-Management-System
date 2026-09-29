@@ -52,6 +52,7 @@ function Button({
       className={cn(buttonVariants({ variant, size, className }))}
       // a Button rendered as a link (render={<Link/>}) is not a native <button>
       nativeButton={props.render ? false : undefined}
+      role={props.render ? "link" : undefined}
       {...props}
     />
   )

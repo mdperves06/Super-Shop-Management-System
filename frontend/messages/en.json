@@ -119,6 +119,5 @@
   "pos.newSale": "New Sale",
   "pos.printReceipt": "Print Receipt",
   "pos.downloadPdf": "Download PDF",
-  "pos.openRegister": "Open cash register",
-  "pos.hold": "Hold"
+  "pos.openRegister": "Open cash register"
 }

@@ -22,14 +22,17 @@ const numberFmt = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, max
 const intFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 })
 const qtyFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 })
 
-export function formatMoney(value: number | null | undefined, opts?: { symbol?: boolean; compact?: boolean }): string {
+/**
+ * `whole` drops the paisa on big figures (>= ৳10,000) so KPI cards stay readable; exact amounts stay in tables and documents.
+ */
+export function formatMoney(value: number | null | undefined, opts?: { symbol?: boolean; compact?: boolean; whole?: boolean }): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—"
   const sym = opts?.symbol === false ? "" : config.currencySymbol
   if (opts?.compact && Math.abs(value) >= 100_000) {
     const f = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 2 })
     return `${value < 0 ? "-" : ""}${sym}${f.format(Math.abs(value))}`
   }
-  const abs = numberFmt.format(Math.abs(value))
+  const abs = opts?.whole && Math.abs(value) >= 10_000 ? intFmt.format(Math.abs(value)) : numberFmt.format(Math.abs(value))
   return `${value < 0 ? "-" : ""}${sym}${abs}`
 }
 

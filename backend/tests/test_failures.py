@@ -64,8 +64,8 @@ def test_sale_with_invalid_customer_or_payment_method(client, admin, cashier):
 
 
 def test_health_reports_degraded_when_database_is_down(client, monkeypatch):
-    from app.core import database
     from app import main
+    from app.core import database
 
     class Boom:
         def connect(self):
