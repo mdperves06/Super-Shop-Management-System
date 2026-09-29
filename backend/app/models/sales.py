@@ -14,6 +14,7 @@ class Sale(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     invoice_number: Mapped[str] = mapped_column(String(30), unique=True)
+    client_ref: Mapped[str | None] = mapped_column(String(64), unique=True)  # idempotency key from the POS
     sale_date: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), index=True)
     cashier_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

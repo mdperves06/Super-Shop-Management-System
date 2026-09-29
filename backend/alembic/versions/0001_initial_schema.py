@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-09-30 02:24:48.063061
+Create Date: 2026-09-30 02:38:19.518984
 
 """
 from typing import Sequence, Union
@@ -681,6 +681,7 @@ def upgrade() -> None:
     sa.Column('quantity', sa.Numeric(precision=14, scale=3), nullable=False),
     sa.Column('received_quantity', sa.Numeric(precision=14, scale=3), nullable=False),
     sa.Column('returned_quantity', sa.Numeric(precision=14, scale=3), nullable=False),
+    sa.Column('received_value', sa.Numeric(precision=14, scale=2), nullable=False),
     sa.Column('unit_cost', sa.Numeric(precision=14, scale=2), nullable=False),
     sa.Column('discount_amount', sa.Numeric(precision=14, scale=2), nullable=False),
     sa.Column('tax_rate', sa.Numeric(precision=6, scale=2), nullable=False),
@@ -716,6 +717,7 @@ def upgrade() -> None:
     op.create_table('sales',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('invoice_number', sa.String(length=30), nullable=False),
+    sa.Column('client_ref', sa.String(length=64), nullable=True),
     sa.Column('sale_date', sa.DateTime(), nullable=False),
     sa.Column('customer_id', sa.Integer(), nullable=True),
     sa.Column('cashier_id', sa.Integer(), nullable=False),
@@ -743,6 +745,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['session_id'], ['cash_register_sessions.id'], ),
     sa.ForeignKeyConstraint(['voided_by'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('client_ref'),
     sa.UniqueConstraint('invoice_number')
     )
     with op.batch_alter_table('sales', schema=None) as batch_op:

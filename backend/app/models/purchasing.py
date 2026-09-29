@@ -93,6 +93,7 @@ class PurchaseItem(Base):
     quantity: Mapped[Decimal] = mapped_column(Qty)
     received_quantity: Mapped[Decimal] = mapped_column(Qty, default=0)
     returned_quantity: Mapped[Decimal] = mapped_column(Qty, default=0)
+    received_value: Mapped[Decimal] = mapped_column(Money, default=0)
     unit_cost: Mapped[Decimal] = mapped_column(Money)
     discount_amount: Mapped[Decimal] = mapped_column(Money, default=0)
     tax_rate: Mapped[Decimal] = mapped_column(Rate, default=0)
