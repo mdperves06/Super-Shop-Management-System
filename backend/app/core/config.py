@@ -28,11 +28,15 @@ class Settings(BaseSettings):
     login_lockout_minutes: int = 15
     rate_limit_per_minute: int = 600
     login_rate_limit_per_minute: int = 20
+    cookie_secure: bool | None = None  # default: secure in production
+    cookie_samesite: str = "lax"  # use "none" (with HTTPS) only if the web app and API live on different sites
+    cookie_domain: str = ""
     frontend_url: str = "http://localhost:3000"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    smtp_security: str = "starttls"  # starttls | ssl | none (none only for a local test sink)
     smtp_from: str = "no-reply@supershop.local"
 
     @field_validator("database_url")
@@ -48,6 +52,10 @@ class Settings(BaseSettings):
     @classmethod
     def _env(cls, v: str) -> str:
         return v.lower()
+
+    @property
+    def refresh_cookie_secure(self) -> bool:
+        return self.is_production if self.cookie_secure is None else self.cookie_secure
 
     @property
     def is_production(self) -> bool:
@@ -70,6 +78,8 @@ class Settings(BaseSettings):
                 raise RuntimeError(f"{name.upper()} must be set to a strong random value in production")
         if self.debug:
             raise RuntimeError("DEBUG must be false in production")
+        if self.cookie_samesite.lower() == "none" and not self.refresh_cookie_secure:
+            raise RuntimeError("COOKIE_SAMESITE=none requires secure cookies")
         if "*" in self.cors_origin_list:
             raise RuntimeError("CORS_ORIGINS must not contain '*' in production")
 

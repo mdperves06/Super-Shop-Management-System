@@ -4,6 +4,8 @@ SQLite  : online backup through the sqlite3 backup API (consistent even while th
 Postgres: pg_dump / pg_restore when the client tools are installed; otherwise the documented commands apply.
 """
 
+import logging
+import os
 import re
 import shutil
 import sqlite3
@@ -16,6 +18,7 @@ from sqlalchemy.engine import make_url
 from app.core.config import settings
 from app.core.errors import AppError, NotFoundError, ValidationFailed
 
+log = logging.getLogger("app.backup")
 NAME_RE = re.compile(r"^shop-\d{8}-\d{6}(-[a-z]+)?\.(db|dump)$")
 
 
@@ -49,11 +52,12 @@ def create_backup(label: str = "") -> Path:
     if not pg_dump:
         raise AppError("pg_dump is not installed on the server. Run: pg_dump -Fc \"$DATABASE_URL\" > backup.dump", code="backup_tool_missing")
     url = make_url(settings.database_url)
-    env = {"PGPASSWORD": url.password or "", "PATH": str(Path(pg_dump).parent)}
+    env = {**os.environ, "PGPASSWORD": url.password or ""}
     cmd = [pg_dump, "-Fc", "-h", url.host or "localhost", "-p", str(url.port or 5432), "-U", url.username or "", "-f", str(target), url.database or ""]
     result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=600)  # noqa: S603
     if result.returncode != 0:
         target.unlink(missing_ok=True)
+        log.error("pg_dump failed: %s", result.stderr.strip()[:500])
         raise AppError("Backup failed. See server logs.", code="backup_failed")
     return target
 
@@ -100,9 +104,10 @@ def restore_backup(name: str) -> None:
         raise AppError("pg_restore is not installed. Run: pg_restore --clean --if-exists -d \"$DATABASE_URL\" backup.dump", code="restore_tool_missing")
     create_backup("prerestore")
     url = make_url(settings.database_url)
-    env = {"PGPASSWORD": url.password or "", "PATH": str(Path(pg_restore).parent)}
+    env = {**os.environ, "PGPASSWORD": url.password or ""}
     cmd = [pg_restore, "--clean", "--if-exists", "-h", url.host or "localhost", "-p", str(url.port or 5432), "-U", url.username or "", "-d", url.database or "", str(path)]
     result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)  # noqa: S603
     engine.dispose()
     if result.returncode not in (0, 1):  # 1 = warnings only
+        log.error("pg_restore failed: %s", result.stderr.strip()[:500])
         raise AppError("Restore failed. See server logs.", code="restore_failed")

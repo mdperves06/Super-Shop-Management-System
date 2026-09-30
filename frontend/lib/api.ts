@@ -8,8 +8,9 @@
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "")
 const PREFIX = "/api/v1"
 
-const ACCESS_KEY = "ssm.access"
-const REFRESH_KEY = "ssm.refresh"
+// The access token lives only in memory. The long-lived refresh token is an HttpOnly cookie set by the API, so
+// injected scripts (XSS) can never read it, and reloading the page silently signs the user back in via /auth/refresh.
+let accessToken: string | null = null
 
 export class ApiError extends Error {
   status: number
@@ -25,24 +26,13 @@ export class ApiError extends Error {
 
 export const tokenStore = {
   get access(): string | null {
-    if (typeof window === "undefined") return null
-    try { return localStorage.getItem(ACCESS_KEY) } catch { return null }
+    return accessToken
   },
-  get refresh(): string | null {
-    if (typeof window === "undefined") return null
-    try { return localStorage.getItem(REFRESH_KEY) } catch { return null }
-  },
-  set(access: string, refresh: string) {
-    try {
-      localStorage.setItem(ACCESS_KEY, access)
-      localStorage.setItem(REFRESH_KEY, refresh)
-    } catch { /* storage unavailable: session lasts until reload */ }
+  set(access: string) {
+    accessToken = access
   },
   clear() {
-    try {
-      localStorage.removeItem(ACCESS_KEY)
-      localStorage.removeItem(REFRESH_KEY)
-    } catch { /* ignore */ }
+    accessToken = null
   },
 }
 
@@ -62,18 +52,17 @@ let refreshing: Promise<boolean> | null = null
 
 async function refreshTokens(): Promise<boolean> {
   if (refreshing) return refreshing
-  const refresh = tokenStore.refresh
-  if (!refresh) return false
   refreshing = (async () => {
     try {
       const res = await fetch(buildUrl("/auth/refresh"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refresh }),
+        credentials: "include", // sends the HttpOnly refresh cookie
+        headers: { "Content-Type": "application/json", "X-Requested-With": "ssm" }, // CSRF guard: cross-site forms cannot set this
+        body: "{}",
       })
       if (!res.ok) return false
       const data = await res.json()
-      tokenStore.set(data.access_token, data.refresh_token)
+      tokenStore.set(data.access_token)
       return true
     } catch {
       return false
@@ -82,6 +71,11 @@ async function refreshTokens(): Promise<boolean> {
     }
   })()
   return refreshing
+}
+
+/** Called once at start-up: turns the refresh cookie (if any) into an access token. */
+export async function restoreSession(): Promise<boolean> {
+  return tokenStore.access ? true : refreshTokens()
 }
 
 function friendly(status: number, code: string, message: string): string {
@@ -127,7 +121,7 @@ async function send(path: string, opts: RequestOptions, retry = true): Promise<R
   }
   let res: Response
   try {
-    res = await fetch(buildUrl(path, opts.query), { method: opts.method ?? "GET", headers, body })
+    res = await fetch(buildUrl(path, opts.query), { method: opts.method ?? "GET", headers, body, credentials: "include" })
   } catch {
     throw new ApiError(0, "network_error", friendly(0, "network_error", ""))
   }
@@ -135,7 +129,7 @@ async function send(path: string, opts: RequestOptions, retry = true): Promise<R
     const clone = res.clone()
     let code = ""
     try { code = (await clone.json())?.error?.code } catch { /* ignore */ }
-    if (["token_expired", "token_invalid", "session_expired", "not_authenticated"].includes(code) && tokenStore.refresh) {
+    if (["token_expired", "token_invalid", "session_expired", "not_authenticated"].includes(code)) {
       if (await refreshTokens()) return send(path, opts, false)
     }
     if (code && code !== "invalid_credentials") {

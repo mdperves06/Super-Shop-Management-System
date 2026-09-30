@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 _tmp = tempfile.mkdtemp(prefix="shoptest_")
-os.environ["DATABASE_URL"] = f"sqlite:///{Path(_tmp, 'test.db').as_posix()}"
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{Path(_tmp, 'test.db').as_posix()}"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["AUTO_MIGRATE"] = "false"
 os.environ["UPLOAD_DIR"] = str(Path(_tmp, "uploads"))
@@ -34,6 +34,16 @@ ROLE_USERS = {
 
 @pytest.fixture(scope="session", autouse=True)
 def _database():
+    from app.core.config import settings
+
+    if not settings.is_sqlite:  # real PostgreSQL run: start from an empty schema
+        from sqlalchemy import text
+
+        from app.core.database import engine
+
+        with engine.begin() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
     initialise_database()
     with SessionLocal() as db:
         for role_name, email in ROLE_USERS.items():

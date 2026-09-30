@@ -69,7 +69,9 @@ def test_backup_create_list_download_and_permissions(client, tokens):
     name = r.json()["name"]
     assert name in [b["name"] for b in client.get("/api/v1/admin/backups", headers=sa).json()]
     d = client.get(f"/api/v1/admin/backups/{name}/download", headers=sa)
-    assert d.status_code == 200 and d.content.startswith(b"SQLite format 3")
+    from app.core.config import settings
+
+    assert d.status_code == 200 and (d.content.startswith(b"SQLite format 3") if settings.is_sqlite else d.content.startswith(b"PGDMP"))
     assert client.get("/api/v1/admin/backups/..%2f..%2fetc%2fpasswd/download", headers=sa).status_code in (404, 422)
     assert client.get("/api/v1/admin/backups/evil.db/download", headers=sa).status_code == 422
     assert client.post(f"/api/v1/admin/backups/{name}/restore", headers=sa, json={"confirm": "wrong"}).status_code == 422

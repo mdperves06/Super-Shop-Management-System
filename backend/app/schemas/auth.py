@@ -27,7 +27,7 @@ class TokenPair(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None  # browsers send the HttpOnly cookie instead
 
 
 class RoleOut(ORMModel):

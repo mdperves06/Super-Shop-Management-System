@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
-import { ApiError, api, tokenStore } from "@/lib/api"
+import { ApiError, api, restoreSession, tokenStore } from "@/lib/api"
 import type { Me } from "@/types/api"
 
 type Status = "loading" | "authenticated" | "anonymous"
@@ -23,7 +23,6 @@ const AuthContext = createContext<AuthValue | null>(null)
 
 interface LoginResponse {
   access_token: string
-  refresh_token: string
   user: Me
 }
 
@@ -34,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient()
 
   const loadUser = useCallback(async () => {
-    if (!tokenStore.access && !tokenStore.refresh) {
+    if (!(await restoreSession())) {
       setUser(null)
       setStatus("anonymous")
       return
@@ -71,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string, otp?: string) => {
     const res = await api.post<LoginResponse>("/auth/login", { email, password, otp: otp || undefined })
-    tokenStore.set(res.access_token, res.refresh_token)
+    tokenStore.set(res.access_token)
     setUser(res.user)
     setStatus("authenticated")
     return res.user

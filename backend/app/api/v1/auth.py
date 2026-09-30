@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentUser
 from app.core.config import settings
-from app.core.errors import NotFoundError
+from app.core.errors import AuthenticationError, NotFoundError
 from app.models.auth import RefreshToken
 from app.models.base import utcnow
 from app.schemas.auth import (
@@ -31,24 +31,63 @@ def _me(user) -> MeOut:  # type: ignore[no-untyped-def]
     return MeOut(**base, permissions=sorted(user.permission_codes), landing_path=auth_service.landing_path(user))
 
 
+COOKIE_NAME = "ssm_refresh"
+COOKIE_PATH = "/api/v1/auth"
+
+
 class LoginResponse(TokenPair):
     user: MeOut
 
 
+def _set_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        COOKIE_NAME, refresh_token, max_age=settings.refresh_token_expire_days * 86400, path=COOKIE_PATH, httponly=True,
+        secure=settings.refresh_cookie_secure, samesite=settings.cookie_samesite.lower(),  # type: ignore[arg-type]
+        domain=settings.cookie_domain or None,
+    )
+
+
+def _clear_cookie(response: Response) -> None:
+    response.delete_cookie(COOKIE_NAME, path=COOKIE_PATH, domain=settings.cookie_domain or None)
+
+
+def _deliver(request: Request, response: Response, tokens: TokenPair) -> TokenPair:
+    """Browsers get the refresh token only as an HttpOnly cookie (invisible to JavaScript / XSS).
+    Non-browser API clients can opt in to the token in the body with `X-Token-Delivery: body`."""
+    _set_cookie(response, tokens.refresh_token)
+    if request.headers.get("x-token-delivery") != "body":
+        tokens = tokens.model_copy(update={"refresh_token": ""})
+    return tokens
+
+
 @router.post("/login", response_model=LoginResponse)
-def login(body: LoginRequest, request: Request, db: DB):  # noqa: ANN201
+def login(body: LoginRequest, request: Request, response: Response, db: DB):  # noqa: ANN201
     user, tokens = auth_service.login(db, body.email, body.password, body.otp, request)
-    return LoginResponse(**tokens.model_dump(), user=_me(user))
+    return LoginResponse(**_deliver(request, response, tokens).model_dump(), user=_me(user))
 
 
 @router.post("/refresh", response_model=TokenPair)
-def refresh(body: RefreshRequest, request: Request, db: DB):  # noqa: ANN201
-    return auth_service.refresh(db, body.refresh_token, request)
+def refresh(request: Request, response: Response, db: DB, body: RefreshRequest | None = None):  # noqa: ANN201
+    token = body.refresh_token if body else None
+    if not token:
+        token = request.cookies.get(COOKIE_NAME)
+        # cookie-borne credentials are CSRF-able, so they must come with a header a cross-site form cannot set
+        if token and request.headers.get("x-requested-with") != "ssm":
+            raise AuthenticationError("Missing CSRF header", code="csrf_failed")
+    if not token:
+        raise AuthenticationError("Not signed in", code="not_authenticated")
+    try:
+        tokens = auth_service.refresh(db, token, request)
+    except AuthenticationError:
+        _clear_cookie(response)
+        raise
+    return _deliver(request, response, tokens)
 
 
 @router.post("/logout", response_model=Message)
-def logout(request: Request, db: DB, user: CurrentUser):  # noqa: ANN201
+def logout(request: Request, response: Response, db: DB, user: CurrentUser):  # noqa: ANN201
     auth_service.logout(db, user, getattr(request.state, "session_id", None), request)
+    _clear_cookie(response)
     return Message(message="Signed out")
 
 

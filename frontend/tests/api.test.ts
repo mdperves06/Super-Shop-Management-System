@@ -7,7 +7,7 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 beforeEach(async () => {
   await new Promise((r) => setTimeout(r, 5)) // let the client's single-flight refresh guard reset between tests
   vi.restoreAllMocks()
-  tokenStore.set("old-access", "old-refresh")
+  tokenStore.set("old-access")
 })
 
 describe("api client", () => {
@@ -39,13 +39,18 @@ describe("api client", () => {
   it("refreshes an expired access token once and retries the request", async () => {
     const spy = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(json(401, { error: { code: "token_expired", message: "expired" } }))
-      .mockResolvedValueOnce(json(200, { access_token: "new-access", refresh_token: "new-refresh" }))
+      .mockResolvedValueOnce(json(200, { access_token: "new-access", refresh_token: "" }))
       .mockResolvedValueOnce(json(200, { hello: "world" }))
     const out = await api.get<{ hello: string }>("/auth/me")
     expect(out.hello).toBe("world")
     expect(spy).toHaveBeenCalledTimes(3)
     expect(tokenStore.access).toBe("new-access")
     expect((spy.mock.calls[2][1]!.headers as Record<string, string>).Authorization).toBe("Bearer new-access")
+    // the refresh call carries the cookie (credentials) and the CSRF header, never a token in JS-visible storage
+    const refreshCall = spy.mock.calls[1][1]!
+    expect(refreshCall.credentials).toBe("include")
+    expect((refreshCall.headers as Record<string, string>)["X-Requested-With"]).toBe("ssm")
+    expect(localStorage.length).toBe(0)
   })
 
   it("signs the user out when the refresh token is rejected", async () => {
@@ -67,5 +72,22 @@ describe("api client", () => {
     await expect(api.post("/auth/login", { email: "a@b.co", password: "x" })).rejects.toMatchObject({ code: "invalid_credentials" })
     expect(onLogout).not.toHaveBeenCalled()
     window.removeEventListener("ssm:logout", onLogout)
+  })
+})
+
+describe("session restore", () => {
+  it("turns the refresh cookie into an access token at start-up", async () => {
+    tokenStore.clear()
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(200, { access_token: "restored", refresh_token: "" }))
+    const { restoreSession } = await import("@/lib/api")
+    expect(await restoreSession()).toBe(true)
+    expect(tokenStore.access).toBe("restored")
+  })
+  it("reports no session when there is no valid cookie", async () => {
+    tokenStore.clear()
+    await new Promise((r) => setTimeout(r, 5))
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(401, { error: { code: "not_authenticated", message: "Not signed in" } }))
+    const { restoreSession } = await import("@/lib/api")
+    expect(await restoreSession()).toBe(false)
   })
 })

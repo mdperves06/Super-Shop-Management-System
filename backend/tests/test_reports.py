@@ -174,3 +174,16 @@ def test_notifications_lifecycle(client, admin, cashier):
     # accountants have no inventory.read, so they never see stock alerts
     r2 = client.get("/api/v1/notifications", headers=cashier, params={"type": "supplier_due"}).json()
     assert r2["total"] == 0
+
+
+def test_pdf_uses_taka_sign_and_embeds_bengali_font(client, admin, cashier, desk):
+    import fitz  # pymupdf
+
+    prod = stock_product(client, admin, qty=5, price=100)
+    sale = sell(client, cashier, prod["id"], 1).json()
+    for kind in ("receipt", "invoice"):
+        r = client.get(f"/api/v1/documents/sales/{sale['id']}/{kind}.pdf", headers=cashier)
+        doc = fitz.open(stream=r.content, filetype="pdf")
+        text = "".join(page.get_text() for page in doc)
+        assert "৳" in text and "Tk" not in text
+        assert any("NotoSansBengali" in f[3] for page in doc for f in page.get_fonts())

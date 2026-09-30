@@ -98,15 +98,27 @@ def login(db: Session, email: str, password: str, otp: str | None, request: Requ
     return user, tokens
 
 
+ROTATION_GRACE = timedelta(seconds=20)
+
+
+def _usable(row: RefreshToken) -> bool:
+    """Live, or rotated moments ago. Several browser tabs may refresh with the same cookie at once; the
+    loser of that race must still succeed. Tokens revoked by logout / password change never get grace."""
+    if row.revoked_at is None:
+        return True
+    return row.replaced_at is not None and row.revoked_at == row.replaced_at and utcnow() - row.replaced_at <= ROTATION_GRACE
+
+
 def refresh(db: Session, refresh_token: str, request: Request | None) -> TokenPair:
     payload = decode_token(refresh_token, refresh=True)
     row = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(payload["jti"])))
-    if row is None or row.revoked_at is not None or row.expires_at < utcnow():
+    if row is None or row.expires_at < utcnow() or not _usable(row):
         raise AuthenticationError("Session expired, please sign in again", code="session_expired")
     user = db.get(User, row.user_id)
     if user is None or not user.is_active or user.is_deleted:
         raise AuthenticationError("Account unavailable", code="account_disabled")
-    row.revoked_at = utcnow()  # rotate: each refresh token is single-use
+    if row.revoked_at is None:  # rotate: a refresh token is single-use (see ROTATION_GRACE for parallel tabs)
+        row.revoked_at = row.replaced_at = utcnow()
     tokens = _issue_tokens(db, user, request)
     db.commit()
     return tokens
@@ -147,13 +159,21 @@ def request_password_reset(db: Session, email: str, request: Request | None) -> 
     if user is None:
         return None
     token = secrets.token_urlsafe(32)
+    # only the newest link works: retire any earlier unused ones
+    db.execute(update(PasswordResetToken).where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)).values(used_at=utcnow()))
     db.add(PasswordResetToken(user_id=user.id, token_hash=hash_token(token), expires_at=utcnow() + timedelta(hours=1)))
     audit.record(db, user=user, action="auth.password_reset_requested", entity="user", entity_id=user.id, request=request)
     db.commit()
     link = f"{settings.frontend_url}/reset-password?token={token}"
-    if not send_email(user.email, "Reset your password", f"Use this link within 1 hour to reset your password:\n{link}"):
-        if not settings.is_production:
-            log.info("Password reset link for %s: %s", user.email, link)
+    body = (
+        f"Hello {user.full_name},\n\nSomeone asked to reset the password for your account. Use this link within 1 hour "
+        f"(it works once):\n\n{link}\n\nIf this wasn't you, ignore this email; your password stays unchanged.\n"
+    )
+    if not send_email(user.email, "Reset your password", body):
+        if settings.is_production:
+            log.warning("Password reset requested for user %s but email could not be sent (check SMTP_* settings)", user.id)
+        else:
+            log.info("SMTP not available; dev password reset link for %s: %s", user.email, link)
     return token
 
 
