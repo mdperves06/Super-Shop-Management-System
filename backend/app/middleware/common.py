@@ -1,14 +1,13 @@
 import logging
-import threading
 import time
 import uuid
-from collections import defaultdict, deque
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
+from app.core.ratelimit import MemoryLimiter
 
 log = logging.getLogger("app.request")
 
@@ -39,36 +38,35 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Small in-process sliding-window limiter. Use a shared store (Redis/WAF) behind multiple workers."""
+SENSITIVE_MARKERS = ("/admin/backups", "/admin/import", "/exports/", "/auth/change-password", "/auth/2fa/")
 
-    def __init__(self, app, per_minute: int, login_per_minute: int):  # type: ignore[no-untyped-def]
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Three buckets per client IP: credential endpoints (strictest), heavy/sensitive endpoints, everything else.
+
+    The client IP is `request.client.host`; behind a reverse proxy run uvicorn with --proxy-headers and
+    FORWARDED_ALLOW_IPS set to the proxy so it is the real address and cannot be spoofed with X-Forwarded-For.
+    """
+
+    def __init__(self, app, per_minute: int, login_per_minute: int, sensitive_per_minute: int | None = None, limiter=None):  # type: ignore[no-untyped-def]
         super().__init__(app)
         self.per_minute = per_minute
         self.login_per_minute = login_per_minute
-        self.hits: dict[str, deque[float]] = defaultdict(deque)
-        self.lock = threading.Lock()
-
-    def _allow(self, key: str, limit: int) -> bool:
-        now = time.monotonic()
-        with self.lock:
-            q = self.hits[key]
-            while q and now - q[0] > 60:
-                q.popleft()
-            if len(q) >= limit:
-                return False
-            q.append(now)
-            return True
+        self.sensitive_per_minute = sensitive_per_minute if sensitive_per_minute is not None else max(per_minute // 10, 1)
+        self.limiter = limiter or MemoryLimiter()
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
         if request.method == "OPTIONS" or not request.url.path.startswith("/api"):
             return await call_next(request)
         ip = request.client.host if request.client else "unknown"
         path = request.url.path
-        strict = path.endswith(("/auth/login", "/auth/forgot-password", "/auth/reset-password"))
-        limit = self.login_per_minute if strict else self.per_minute
-        key = f"{ip}:{'auth' if strict else 'api'}"
-        if not self._allow(key, limit):
+        if path.endswith(("/auth/login", "/auth/forgot-password", "/auth/reset-password")):
+            bucket, limit = "auth", self.login_per_minute
+        elif any(m in path for m in SENSITIVE_MARKERS):
+            bucket, limit = "sensitive", self.sensitive_per_minute
+        else:
+            bucket, limit = "api", self.per_minute
+        if not await self.limiter.allow(f"{bucket}:{ip}", limit):
             return JSONResponse(
                 status_code=429,
                 content={"error": {"code": "rate_limited", "message": "Too many requests. Please slow down.", "details": None}},

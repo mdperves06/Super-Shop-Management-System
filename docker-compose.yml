@@ -39,10 +39,27 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-no-reply@supershop.local}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      REDIS_URL: redis://redis:6379/0
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
+
+  # Shared rate-limit counters so limits hold across backend workers and replicas.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   backend:
     build: ./backend
@@ -56,6 +73,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -67,12 +86,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
-
-  # Optional: uncomment to add Redis if you later move rate-limiting / caching to a shared store.
-  # redis:
-  #   image: redis:7-alpine
-  #   restart: unless-stopped
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:

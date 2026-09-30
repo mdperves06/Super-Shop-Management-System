@@ -13,6 +13,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import SessionLocal, engine
 from app.core.errors import AppError
+from app.core.ratelimit import build_limiter
 from app.middleware.common import RateLimitMiddleware, RequestContextMiddleware, SecurityHeadersMiddleware
 from app.utils.uploads import upload_root
 
@@ -63,7 +64,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute, login_per_minute=settings.login_rate_limit_per_minute)
+    app.add_middleware(
+        RateLimitMiddleware, per_minute=settings.rate_limit_per_minute, login_per_minute=settings.login_rate_limit_per_minute,
+        sensitive_per_minute=settings.sensitive_rate_limit_per_minute, limiter=build_limiter(settings.redis_url),
+    )
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,

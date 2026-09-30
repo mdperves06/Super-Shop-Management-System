@@ -26,3 +26,7 @@ next-env.d.ts
 .DS_Store
 coverage/
 .vercel
+
+# e2e artefacts
+backend/e2e-uploads/
+backend/e2e-backups/

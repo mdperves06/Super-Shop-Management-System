@@ -2,7 +2,7 @@
 
 _Generated from the SQLAlchemy models by `backend/scripts/gen_docs.py`._
 
-51 tables. Migrations live in `backend/alembic/versions`. Money is `NUMERIC(14,2)`, quantities `NUMERIC(14,3)`, all timestamps are stored as UTC.
+52 tables. Migrations live in `backend/alembic/versions`. Money is `NUMERIC(14,2)`, quantities `NUMERIC(14,3)`, all timestamps are stored as UTC.
 
 Financial records are never physically deleted: sales are voided, expenses voided, products/suppliers/customers/employees soft-deleted.
 
@@ -126,6 +126,26 @@ Constraints: unique(employee_id, work_date)
 | `updated_at` | DATETIME | no |  |
 | `is_deleted` | BOOLEAN | no | indexed |
 | `deleted_at` | DATETIME | yes |  |
+
+## `discount_requests`
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| `id` | INTEGER | no | PK |
+| `requested_by` | INTEGER | no | FK → `users.id`, indexed |
+| `cart_hash` | VARCHAR(64) | no |  |
+| `cart_snapshot` | JSON | no |  |
+| `discount_percent` | NUMERIC(6, 2) | no |  |
+| `discount_amount` | NUMERIC(14, 2) | no |  |
+| `reason` | TEXT | no |  |
+| `status` | VARCHAR(10) | no | indexed |
+| `expires_at` | DATETIME | no |  |
+| `decided_by` | INTEGER | yes | FK → `users.id` |
+| `decided_at` | DATETIME | yes |  |
+| `decision_note` | TEXT | yes |  |
+| `used_sale_id` | INTEGER | yes | FK → `sales.id` |
+| `created_at` | DATETIME | no |  |
+| `updated_at` | DATETIME | no |  |
 
 ## `discounts`
 
@@ -526,6 +546,7 @@ Constraints: check `purchase_price >= 0`; check `selling_price >= 0`
 | `token_hash` | VARCHAR(64) | no | unique |
 | `expires_at` | DATETIME | no |  |
 | `revoked_at` | DATETIME | yes |  |
+| `replaced_at` | DATETIME | yes |  |
 | `ip_address` | VARCHAR(64) | yes |  |
 | `user_agent` | VARCHAR(255) | yes |  |
 | `created_at` | DATETIME | no |  |

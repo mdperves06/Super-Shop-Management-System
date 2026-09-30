@@ -34,10 +34,7 @@ def snapshot(obj: Any, fields: list[str]) -> dict[str, Any]:
 def client_info(request: Request | None) -> tuple[str | None, str | None]:
     if request is None:
         return None, None
-    ip = request.client.host if request.client else None
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        ip = forwarded.split(",")[0].strip()
+    ip = request.client.host if request.client else None  # real client IP when uvicorn runs with --proxy-headers behind a trusted proxy
     ua = request.headers.get("user-agent")
     return ip, (ua[:250] if ua else None)
 

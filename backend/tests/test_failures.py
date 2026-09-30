@@ -124,3 +124,47 @@ def test_password_is_never_logged_or_returned(client, caplog):
     assert PASSWORD not in caplog.text
     users = client.get("/api/v1/users", headers={"Authorization": f"Bearer {r.json()['access_token']}"})
     assert "password" not in users.text and "argon2" not in users.text
+
+
+def test_sensitive_endpoints_have_their_own_bucket():
+    app = FastAPI()
+    app.add_middleware(RateLimitMiddleware, per_minute=100, login_per_minute=100, sensitive_per_minute=2)
+
+    @app.get("/api/v1/admin/backups")
+    def backups():  # noqa: ANN202
+        return {}
+
+    @app.get("/api/v1/thing")
+    def thing():  # noqa: ANN202
+        return {}
+
+    with TestClient(app) as c:
+        assert [c.get("/api/v1/admin/backups").status_code for _ in range(3)] == [200, 200, 429]
+        assert c.get("/api/v1/thing").status_code == 200  # ordinary traffic unaffected
+
+
+def test_redis_limiter_is_shared_between_instances_and_degrades_gracefully():
+    import asyncio
+
+    import fakeredis
+
+    from app.core.ratelimit import RedisLimiter
+
+    server = fakeredis.FakeServer()
+    a = RedisLimiter("redis://unused", client=fakeredis.FakeAsyncRedis(server=server, decode_responses=True))
+    b = RedisLimiter("redis://unused", client=fakeredis.FakeAsyncRedis(server=server, decode_responses=True))
+
+    async def scenario():
+        assert [await a.allow("auth:1.2.3.4", 3) for _ in range(2)] == [True, True]
+        assert await b.allow("auth:1.2.3.4", 3) is True  # a different worker sees the same counter
+        assert await a.allow("auth:1.2.3.4", 3) is False
+        assert await b.allow("auth:9.9.9.9", 3) is True  # per-client
+
+        class Down:
+            def pipeline(self, **_):  # noqa: ANN202
+                raise ConnectionError("redis down")
+
+        broken = RedisLimiter("redis://unused", client=Down())
+        assert [await broken.allow("k", 1) for _ in range(2)] == [True, False]  # local fallback still limits
+
+    asyncio.run(scenario())

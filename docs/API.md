@@ -187,6 +187,11 @@ Interactive docs (Swagger UI) are served at `/docs` and `/redoc` whenever `ENVIR
 | `POST` | `/api/v1/cash-sessions/open` | Open session |
 | `POST` | `/api/v1/cash-sessions/{session_id}/close` | Close session |
 | `POST` | `/api/v1/cash-sessions/{session_id}/movements` | Cash movement |
+| `POST` | `/api/v1/discount-requests` | Create discount request |
+| `GET` | `/api/v1/discount-requests` | List discount requests |
+| `GET` | `/api/v1/discount-requests/{request_id}` | Get discount request |
+| `POST` | `/api/v1/discount-requests/{request_id}/approve` | Approve discount request |
+| `POST` | `/api/v1/discount-requests/{request_id}/reject` | Reject discount request |
 | `POST` | `/api/v1/discounts` | Create discount |
 | `GET` | `/api/v1/discounts` | List discounts |
 | `DELETE` | `/api/v1/discounts/{discount_id}` | Delete discount |

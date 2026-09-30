@@ -64,6 +64,7 @@ Every API route enforces its permission on the server (`require(...)` dependency
 | `sale.return` | Process sale returns |
 | `sale.credit` | Sell on credit |
 | `discount.override` | Give discounts above the cashier limit |
+| `discount.approve` | Approve or reject cashiers' discount requests |
 | `promotion.manage` | Manage promotions and discount presets |
 
 ### register
@@ -137,7 +138,7 @@ Every API route enforces its permission on the server (`require(...)` dependency
 
 Full access to everything including backups, roles and system configuration.
 
-65 of 65 permissions.
+66 of 66 permissions.
 
 All permissions.
 
@@ -145,23 +146,23 @@ All permissions.
 
 Owner / business administrator. Everything except backup/restore and role management.
 
-63 of 65 permissions.
+64 of 66 permissions.
 
-`dashboard.view`, `dashboard.finance`, `product.read`, `product.create`, `product.update`, `product.delete`, `product.cost`, `product.import`, `category.manage`, `inventory.read`, `inventory.adjust`, `supplier.read`, `supplier.create`, `supplier.update`, `supplier.delete`, `supplier.payment`, `purchase.read`, `purchase.create`, `purchase.approve`, `purchase.receive`, `purchase.cancel`, `purchase.return`, `sale.create`, `sale.read`, `sale.read_all`, `sale.cancel`, `sale.return`, `sale.credit`, `discount.override`, `promotion.manage`, `register.use`, `register.manage`, `customer.read`, `customer.create`, `customer.update`, `customer.delete`, `customer.payment`, `customer.import`, `employee.read`, `employee.create`, `employee.update`, `employee.delete`, `employee.salary`, `expense.read`, `expense.create`, `expense.update`, `expense.delete`, `report.sales`, `report.inventory`, `report.purchases`, `report.expenses`, `report.profit`, `report.finance`, `report.export`, `notification.read`, `audit.read`, `settings.read`, `settings.update`, `user.read`, `user.create`, `user.update`, `user.delete`, `import.manage`
+`dashboard.view`, `dashboard.finance`, `product.read`, `product.create`, `product.update`, `product.delete`, `product.cost`, `product.import`, `category.manage`, `inventory.read`, `inventory.adjust`, `supplier.read`, `supplier.create`, `supplier.update`, `supplier.delete`, `supplier.payment`, `purchase.read`, `purchase.create`, `purchase.approve`, `purchase.receive`, `purchase.cancel`, `purchase.return`, `sale.create`, `sale.read`, `sale.read_all`, `sale.cancel`, `sale.return`, `sale.credit`, `discount.override`, `discount.approve`, `promotion.manage`, `register.use`, `register.manage`, `customer.read`, `customer.create`, `customer.update`, `customer.delete`, `customer.payment`, `customer.import`, `employee.read`, `employee.create`, `employee.update`, `employee.delete`, `employee.salary`, `expense.read`, `expense.create`, `expense.update`, `expense.delete`, `report.sales`, `report.inventory`, `report.purchases`, `report.expenses`, `report.profit`, `report.finance`, `report.export`, `notification.read`, `audit.read`, `settings.read`, `settings.update`, `user.read`, `user.create`, `user.update`, `user.delete`, `import.manage`
 
 ### MANAGER
 
 Day-to-day management of catalogue, stock, purchasing, customers, staff and reports.
 
-50 of 65 permissions.
+51 of 66 permissions.
 
-`dashboard.view`, `dashboard.finance`, `product.read`, `product.create`, `product.update`, `product.delete`, `product.cost`, `category.manage`, `inventory.read`, `inventory.adjust`, `supplier.read`, `supplier.create`, `supplier.update`, `supplier.payment`, `purchase.read`, `purchase.create`, `purchase.approve`, `purchase.receive`, `purchase.cancel`, `purchase.return`, `sale.create`, `sale.read`, `sale.read_all`, `sale.cancel`, `sale.return`, `sale.credit`, `discount.override`, `promotion.manage`, `register.use`, `register.manage`, `customer.read`, `customer.create`, `customer.update`, `customer.payment`, `customer.import`, `employee.read`, `expense.read`, `expense.create`, `expense.update`, `expense.delete`, `report.sales`, `report.inventory`, `report.purchases`, `report.expenses`, `report.profit`, `report.finance`, `report.export`, `notification.read`, `settings.read`, `product.import`
+`dashboard.view`, `dashboard.finance`, `product.read`, `product.create`, `product.update`, `product.delete`, `product.cost`, `category.manage`, `inventory.read`, `inventory.adjust`, `supplier.read`, `supplier.create`, `supplier.update`, `supplier.payment`, `purchase.read`, `purchase.create`, `purchase.approve`, `purchase.receive`, `purchase.cancel`, `purchase.return`, `sale.create`, `sale.read`, `sale.read_all`, `sale.cancel`, `sale.return`, `sale.credit`, `discount.override`, `discount.approve`, `promotion.manage`, `register.use`, `register.manage`, `customer.read`, `customer.create`, `customer.update`, `customer.payment`, `customer.import`, `employee.read`, `expense.read`, `expense.create`, `expense.update`, `expense.delete`, `report.sales`, `report.inventory`, `report.purchases`, `report.expenses`, `report.profit`, `report.finance`, `report.export`, `notification.read`, `settings.read`, `product.import`
 
 ### CASHIER
 
 POS operator: register, sales, payments, receipts and approved returns.
 
-11 of 65 permissions.
+11 of 66 permissions.
 
 `dashboard.view`, `product.read`, `inventory.read`, `sale.create`, `sale.read`, `sale.return`, `register.use`, `customer.read`, `customer.create`, `customer.payment`, `notification.read`
 
@@ -169,7 +170,7 @@ POS operator: register, sales, payments, receipts and approved returns.
 
 Receives stock, adjusts inventory, tracks batches and expiry.
 
-14 of 65 permissions.
+14 of 66 permissions.
 
 `dashboard.view`, `product.read`, `product.create`, `product.update`, `category.manage`, `inventory.read`, `inventory.adjust`, `supplier.read`, `purchase.read`, `purchase.receive`, `purchase.return`, `report.inventory`, `report.purchases`, `notification.read`
 
@@ -177,7 +178,7 @@ Receives stock, adjusts inventory, tracks batches and expiry.
 
 Read access to sales, purchases, expenses, payments and financial reports.
 
-24 of 65 permissions.
+24 of 66 permissions.
 
 `dashboard.view`, `dashboard.finance`, `sale.read`, `sale.read_all`, `purchase.read`, `supplier.read`, `supplier.payment`, `customer.read`, `customer.payment`, `expense.read`, `expense.create`, `expense.update`, `report.sales`, `report.purchases`, `report.expenses`, `report.profit`, `report.finance`, `report.inventory`, `report.export`, `product.read`, `product.cost`, `inventory.read`, `register.manage`, `notification.read`
 
@@ -185,7 +186,7 @@ Read access to sales, purchases, expenses, payments and financial reports.
 
 Limited read-only access.
 
-4 of 65 permissions.
+4 of 66 permissions.
 
 `dashboard.view`, `product.read`, `inventory.read`, `notification.read`
 

@@ -10,6 +10,7 @@ os.environ["UPLOAD_DIR"] = str(Path(_tmp, "uploads"))
 os.environ["BACKUP_DIR"] = str(Path(_tmp, "backups"))
 os.environ["RATE_LIMIT_PER_MINUTE"] = "100000"
 os.environ["LOGIN_RATE_LIMIT_PER_MINUTE"] = "100000"
+os.environ["SENSITIVE_RATE_LIMIT_PER_MINUTE"] = "100000"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

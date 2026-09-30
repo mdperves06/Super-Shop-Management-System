@@ -21,7 +21,10 @@ The system is two independent services plus a database:
 - [ ] Persist the `uploads/` and `backups/` directories (volumes) — product images and expense receipts live there.
 - [ ] Configure SMTP (`SMTP_*`) if you want password-reset emails; without it the reset link is only written to the server log in development and **not delivered** in production.
 - [ ] Schedule backups (below) and copy them off the server.
-- [ ] Put a rate-limiting proxy/WAF in front if you run more than one API instance (the built-in limiter is per process).
+- [ ] **Rate limiting:** set `REDIS_URL` (the Compose file already runs a `redis` service) so login/reset/sensitive-endpoint limits are shared by all workers and replicas; without it each process counts alone. Tune `RATE_LIMIT_PER_MINUTE`, `LOGIN_RATE_LIMIT_PER_MINUTE`, `SENSITIVE_RATE_LIMIT_PER_MINUTE`. A CDN/WAF (Cloudflare etc.) in front is still recommended for volumetric abuse.
+- [ ] **Client IP behind a proxy:** set `FORWARDED_ALLOW_IPS` to your reverse proxy's address (uvicorn then trusts `X-Forwarded-For` only from it). Use `*` only if the backend port is *not* published to the internet, otherwise anyone can spoof their IP and dodge the limits.
+- [ ] **Cookies:** the refresh token is an HttpOnly cookie. `app.example.com` + `api.example.com` (same site) works with the default `COOKIE_SAMESITE=lax`. Only if the two are on different registrable domains, use `COOKIE_SAMESITE=none` (HTTPS required). Cookies are `Secure` automatically in production; override with `COOKIE_SECURE`.
+- [ ] **Email:** `SMTP_HOST`, `SMTP_PORT` (587 with `SMTP_SECURITY=starttls`, or 465 with `ssl`), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`. To try it locally without a real provider run a sink: `python -m aiosmtpd -n -l 127.0.0.1:1025` with `SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_SECURITY=none`; the mail is printed by the sink.
 - [ ] Set the shop profile, tax rates, payment methods and register names under **Settings** before trading.
 
 ## Docker Compose (single server / VPS)

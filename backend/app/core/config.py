@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     login_lockout_minutes: int = 15
     rate_limit_per_minute: int = 600
     login_rate_limit_per_minute: int = 20
+    sensitive_rate_limit_per_minute: int = 30  # backups, imports/exports, password/2FA changes
+    redis_url: str | None = None  # shared rate-limit counters across workers/instances
     cookie_secure: bool | None = None  # default: secure in production
     cookie_samesite: str = "lax"  # use "none" (with HTTPS) only if the web app and API live on different sites
     cookie_domain: str = ""
@@ -38,6 +40,11 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_security: str = "starttls"  # starttls | ssl | none (none only for a local test sink)
     smtp_from: str = "no-reply@supershop.local"
+
+    @field_validator("cookie_secure", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, v):  # noqa: ANN001, ANN206
+        return None if isinstance(v, str) and not v.strip() else v
 
     @field_validator("database_url")
     @classmethod

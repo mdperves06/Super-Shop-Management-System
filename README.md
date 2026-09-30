@@ -5,9 +5,9 @@ A full-stack point-of-sale, inventory, purchasing and accounting platform for a 
 | | |
 |---|---|
 | **Frontend** | Next.js 16 (App Router) · TypeScript · React 19 · Tailwind CSS 4 · shadcn/ui (Base UI) · TanStack Query · React Hook Form + Zod · Recharts |
-| **Backend** | Python 3.13 · FastAPI · Pydantic v2 · SQLAlchemy 2 · Alembic · JWT (access + rotating refresh) · Argon2 |
+| **Backend** | Python 3.13 · FastAPI · Pydantic v2 · SQLAlchemy 2 · Alembic · JWT access tokens + HttpOnly rotating refresh cookie · Argon2 |
 | **Database** | PostgreSQL in production · SQLite for local development (same code, same migrations) |
-| **Ops** | Docker Compose (frontend, backend, postgres) · health checks · scripted backups |
+| **Ops** | Docker Compose (frontend, backend, postgres, redis) · health checks · GitHub Actions CI (lint, unit, PostgreSQL, Playwright E2E, Docker build) · scripted backups |
 
 > **Demo data & credentials** are for local development only. `seed.py` creates users with the public password `Demo@12345`. Never seed a real installation — use `python -m app.cli create-superadmin` instead.
 
@@ -47,6 +47,13 @@ Sign in at http://localhost:3000 with any demo account (password `Demo@12345`):
 | `superadmin@example.com` | Super admin (backups, roles) | Dashboard |
 | `staff@example.com` | Staff (read-only) | Dashboard |
 
+## Databases
+
+| | Use | How |
+|---|---|---|
+| **SQLite** | local development, tests, demos | default when `DATABASE_URL` is unset (`backend/shop.db`). One writer process only. |
+| **PostgreSQL 14+** | production | `DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db`, then `python -m app.cli migrate`. Same code and migrations; the whole backend test-suite is run against PostgreSQL in CI (`TEST_DATABASE_URL=… pytest`). |
+
 ## Run with Docker
 
 ```bash
@@ -54,7 +61,7 @@ cp .env.example .env              # then edit: POSTGRES_PASSWORD and the three s
 docker compose up --build
 ```
 
-`migrate` applies Alembic migrations, then `backend` (port 8000) and `frontend` (port 3000) start. Create the first user:
+`postgres` and `redis` start first, `migrate` applies Alembic migrations, then `backend` (port 8000) and `frontend` (port 3000) start; all have health checks. The `docker` job in `.github/workflows/ci.yml` builds both images and runs this stack with a smoke test on every push. Create the first user:
 
 ```bash
 docker compose run --rm backend python -m app.cli create-superadmin --email owner@yourshop.com --name "Shop Owner"
@@ -76,8 +83,10 @@ Production notes are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 | **Finance** | Expenses (with receipt upload), cash register open/close with expected-vs-counted reconciliation and required discrepancy reason, VAT with effective dates, profit & loss, cash flow, payables/receivables |
 | **Reports** | 22 reports with date/product/category/supplier/cashier/payment filters, CSV + Excel export, print |
 | **Dashboard** | KPI cards, sales/profit trend, top products, category and inventory donuts, recent transactions; content follows the user's permissions |
-| **Security** | RBAC with 65 granular permissions enforced server-side, Argon2 passwords, JWT + single-use rotating refresh tokens, lockout, rate limiting, TOTP 2FA, audit log, secure headers, validated uploads |
-| **Ops** | Health endpoint, backup/restore, CSV import with validation and dry-run, Docker, Alembic migrations |
+| **Discount approval** | Cashiers have a discount cap; above it they file a request tied to the exact cart, a manager/admin approves or rejects it (reason, approver, timestamps, audit), and an approved request can be used by exactly one sale, within 30 minutes |
+| **Security** | RBAC with 66 granular permissions enforced server-side, Argon2 passwords, short-lived access token kept in memory + HttpOnly rotating refresh cookie with CSRF header, lockout, per-IP rate limiting (Redis-shared), TOTP 2FA, audit log, secure headers, validated uploads |
+| **Ops** | Health endpoint, backup/restore (SQLite and `pg_dump`), CSV import with validation and dry-run, Docker, Alembic migrations, password-reset email over SMTP |
+| **Documents** | Receipts, A4 invoices, purchase orders and statements as PDF with real Bangla shaping and the ৳ sign (bundled Noto Sans Bengali) |
 | **Localisation** | ৳ BDT, Asia/Dhaka time zone, lakh/crore digit grouping, configurable date format, English/বাংলা UI (translation files in `frontend/messages`) |
 
 Documentation:
@@ -90,23 +99,25 @@ Documentation:
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — production checklist, Render/Railway/Vercel/AWS/DigitalOcean, backups & restore
 - [docs/TESTING.md](docs/TESTING.md) — test suites and the manual acceptance scenario
 
-## Development commands
+## Tests
 
 ```bash
-# backend (from backend/)
-pytest                                   # 96 tests: auth, RBAC, catalogue, inventory, purchasing, POS, returns,
-                                         # cash register, reports, imports, backups, concurrency, migrations
-ruff check .                             # lint
-alembic revision --autogenerate -m "…"   # new migration after changing models
-alembic upgrade head                     # apply migrations (production does this explicitly)
-python seed.py --reset                   # demo data (SQLite only)
-python scripts/gen_docs.py               # regenerate docs/API.md, DATABASE.md, PERMISSIONS.md
+# backend (from backend/)                 SQLite by default
+pytest                                    # ~110 tests: auth, cookies/CSRF, RBAC, catalogue, inventory, purchasing, POS,
+                                          # discount approval, returns, cash register, reports, PDFs, imports, backups,
+                                          # rate limiting, concurrency, migrations
+TEST_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/scratch pytest   # same suite on PostgreSQL (drops the schema!)
+ruff check .                              # lint
 
 # frontend (from frontend/)
-npm run dev | build | start
 npm run typecheck && npm run lint
-npm test                                 # vitest: formatting, API client, payment settlement, tables, login
+npm test                                  # vitest unit + component tests
+npm run e2e                               # Playwright: starts a seeded API on :8100 and the built app on :3100
+                                          # first time: npx playwright install chromium   (or E2E_CHANNEL=chrome)
+                                          # set E2E_PYTHON to the backend venv interpreter if `python` lacks the requirements
 ```
+
+Other commands: `alembic revision --autogenerate -m "…"`, `alembic upgrade head`, `python seed.py --reset` (demo data, SQLite only), `python scripts/gen_docs.py` (regenerates docs/API.md, DATABASE.md, PERMISSIONS.md).
 
 ## Environment variables
 
@@ -117,7 +128,12 @@ See [.env.example](.env.example) for the full annotated list. The important ones
 | `DATABASE_URL` | `postgresql+psycopg://user:pass@host:5432/db`. Unset → local SQLite file. |
 | `SECRET_KEY`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET` | Independent random secrets, ≥ 32 chars. **The API refuses to boot in production with the development defaults.** |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API (no `*` in production). |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access-token lifetime (default 30). |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS` | Access-token (default 30 min) and refresh-cookie (14 d) lifetimes. |
+| `COOKIE_SECURE`, `COOKIE_SAMESITE`, `COOKIE_DOMAIN` | Refresh-cookie attributes. Secure is automatic in production; keep `lax` when app and API share a site, `none` (HTTPS) otherwise. |
+| `REDIS_URL` | Shared rate-limit counters for multi-worker / multi-instance deployments (falls back to per-process memory if unset or unreachable). |
+| `RATE_LIMIT_PER_MINUTE`, `LOGIN_RATE_LIMIT_PER_MINUTE`, `SENSITIVE_RATE_LIMIT_PER_MINUTE` | Per-IP limits: general API, login/password-reset, backups/imports/exports/password changes. |
+| `FORWARDED_ALLOW_IPS` | Proxy IPs trusted for `X-Forwarded-For` (so limits and the audit log see the real client). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURITY` | Password-reset email. `SMTP_SECURITY` = `starttls` (587), `ssl` (465) or `none` (local test sink only). |
 | `UPLOAD_DIR`, `BACKUP_DIR` | Where product images / receipts / backups are stored (persist these volumes). |
 | `NEXT_PUBLIC_API_URL` | API base URL as seen from the browser; baked into the frontend build. |
 
@@ -130,15 +146,34 @@ See [.env.example](.env.example) for the full annotated list. The important ones
 | `database is locked` on SQLite | Only one API process should write to a SQLite file; use PostgreSQL for multi-worker deployments. |
 | `Refusing to seed demo data in production` | By design. Seed only development databases. |
 | `pg_dump is not installed` when backing up | Install `postgresql-client` on the API host (already in the Docker image) or run the documented `pg_dump` command yourself. |
-| Bangla text looks like boxes in PDFs | Built-in PDF fonts lack Bangla; PDFs use English text and "Tk". On-screen/print views render Bangla natively. |
 | Barcode scanner types into the wrong place | On the POS the scan box regains focus on any key; press **F2** to focus it manually. |
+| Password-reset email never arrives | Check `SMTP_*`; failures are logged (`app.auth`) but never shown to the user. In development the link is logged and the API returns it as `dev_token`. Test locally with `python -m aiosmtpd -n -l 127.0.0.1:1025` and `SMTP_SECURITY=none`. |
+| Logged out on every reload behind a proxy / other domain | The refresh cookie is not being stored: use HTTPS in production, keep app and API on the same site or set `COOKIE_SAMESITE=none`, and add the app origin to `CORS_ORIGINS`. |
 | Port 3000/8000 already in use | Stop the other process or run on other ports (`uvicorn … --port 8001`, `npm run dev -- -p 3001`; update `CORS_ORIGINS`/`NEXT_PUBLIC_API_URL`). |
 
 ## Repository layout
 
 ```
 backend/   FastAPI app (app/api, services, models, schemas, repositories, middleware), alembic/, tests/, seed.py
-frontend/  Next.js app (app/, features/, components/, lib/, hooks/, services/, types/, messages/, tests/)
+frontend/  Next.js app (app/, features/, components/, lib/, hooks/, services/, types/, messages/, tests/, e2e/)
 docs/      architecture, finance rules, API, database, permissions, deployment, testing
-docker-compose.yml   .env.example   run_*.bat / run_*.sh
+docker-compose.yml   .env.example   .github/workflows/ci.yml   LICENSE   run_*.bat / run_*.sh
 ```
+
+## Security notes
+
+- Secrets come only from the environment; the API refuses to start in production with development secrets, `DEBUG`, wildcard CORS or insecure cookie settings. `.env`, databases and backups are git-ignored.
+- The refresh token never reaches JavaScript (HttpOnly cookie, path-scoped, single-use rotation, hashed at rest). Cookie-authenticated calls (`/auth/refresh`, `/auth/logout`) need the `X-Requested-With: ssm` header.
+- Money and stock changes are single database transactions with conditional updates / row locks, so concurrent sales cannot oversell and a failure leaves nothing half-written.
+- Passwords: Argon2, strength rules, lockout, single-use expiring reset links, all sessions revoked on change/reset. Login/reset responses do not reveal whether an account exists.
+- Report a vulnerability privately to the repository owner rather than in a public issue.
+
+## Known limits
+
+- Single shop location: there are no branch warehouses, so no stock transfers. Product sizes/variants are separate products by design (own SKU, barcode and stock).
+- SQLite supports one writing process; use PostgreSQL for anything multi-user in production.
+- The Docker images are built and smoke-tested by CI; they have not been built on the author's Windows development machine (no Docker installed there).
+
+## License
+
+MIT, see [LICENSE](LICENSE). The bundled Noto Sans Bengali font is under the SIL Open Font License.
