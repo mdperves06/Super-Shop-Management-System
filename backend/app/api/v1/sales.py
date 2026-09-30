@@ -7,10 +7,11 @@ from sqlalchemy import or_, select
 from app.api.deps import DB, Pagination, has_permission, require
 from app.core.errors import NotFoundError, PermissionDenied
 from app.models.auth import User
+from app.models.base import utcnow
 from app.models.customers import Customer
 from app.models.enums import CashTxnType
 from app.models.finance import CashRegister, CashRegisterSession
-from app.models.sales import Discount, Promotion, Sale, SalePayment, SaleReturn
+from app.models.sales import Discount, DiscountRequest, Promotion, Sale, SalePayment, SaleReturn
 from app.repositories.base import apply_sort, like, page_response, paginate
 from app.schemas.common import Message, Page
 from app.schemas.sales import (
@@ -18,8 +19,11 @@ from app.schemas.sales import (
     CartPreview,
     CashMovementIn,
     CloseSessionIn,
+    DiscountDecisionIn,
     DiscountIn,
     DiscountOut,
+    DiscountRequestIn,
+    DiscountRequestOut,
     OpenSessionIn,
     PreviewLine,
     PromotionIn,
@@ -33,7 +37,7 @@ from app.schemas.sales import (
     SessionOut,
     VoidIn,
 )
-from app.services import audit, cash_service, sales_service, settings_service
+from app.services import audit, cash_service, discount_service, sales_service, settings_service
 from app.utils.dates import get_tz, range_bounds
 
 router = APIRouter(tags=["sales"])
@@ -329,3 +333,62 @@ def delete_discount(discount_id: int, db: DB, user: Annotated[User, Depends(requ
     audit.record(db, user=user, action="discount.deactivate", entity="discount", entity_id=row.id)
     db.commit()
     return Message(message="Discount removed")
+
+
+# ---- discount approval workflow -------------------------------------------------------
+
+def _request_out(row: DiscountRequest) -> DiscountRequestOut:
+    out = DiscountRequestOut.model_validate(row)
+    out.status = discount_service.effective_status(row)
+    out.requested_by_name = row.requester.full_name
+    out.decided_by_name = row.approver.full_name if row.approver else None
+    return out
+
+
+@router.post("/discount-requests", response_model=DiscountRequestOut, status_code=201)
+def create_discount_request(body: DiscountRequestIn, db: DB, user: Annotated[User, Depends(require("sale.create"))]):
+    row = discount_service.create(db, body, user)
+    db.commit()
+    db.refresh(row)
+    return _request_out(row)
+
+
+@router.get("/discount-requests", response_model=Page[DiscountRequestOut])
+def list_discount_requests(db: DB, p: Pagination, user: Annotated[User, Depends(require("sale.create", "discount.approve", any_of=True))],
+                           status: str | None = None):
+    stmt = select(DiscountRequest)
+    if not has_permission(user, "discount.approve"):
+        stmt = stmt.where(DiscountRequest.requested_by == user.id)
+    if status == "EXPIRED":
+        stmt = stmt.where(DiscountRequest.status.in_(("PENDING", "APPROVED")), DiscountRequest.expires_at < utcnow())
+    elif status:
+        stmt = stmt.where(DiscountRequest.status == status)
+        if status in ("PENDING", "APPROVED"):
+            stmt = stmt.where(DiscountRequest.expires_at >= utcnow())
+    stmt = stmt.order_by(DiscountRequest.id.desc())
+    rows, total = paginate(db, stmt, p)
+    return page_response([_request_out(r) for r in rows], total, p)
+
+
+@router.get("/discount-requests/{request_id}", response_model=DiscountRequestOut)
+def get_discount_request(request_id: int, db: DB, user: Annotated[User, Depends(require("sale.create", "discount.approve", any_of=True))]):
+    row = discount_service.get(db, request_id)
+    if row.requested_by != user.id and not has_permission(user, "discount.approve"):
+        raise PermissionDenied("You can only view your own discount requests")
+    return _request_out(row)
+
+
+@router.post("/discount-requests/{request_id}/approve", response_model=DiscountRequestOut)
+def approve_discount_request(request_id: int, body: DiscountDecisionIn, db: DB, user: Annotated[User, Depends(require("discount.approve"))]):
+    row = discount_service.decide(db, request_id, approve=True, note=body.note, user=user)
+    db.commit()
+    db.refresh(row)
+    return _request_out(row)
+
+
+@router.post("/discount-requests/{request_id}/reject", response_model=DiscountRequestOut)
+def reject_discount_request(request_id: int, body: DiscountDecisionIn, db: DB, user: Annotated[User, Depends(require("discount.approve"))]):
+    row = discount_service.decide(db, request_id, approve=False, note=body.note, user=user)
+    db.commit()
+    db.refresh(row)
+    return _request_out(row)

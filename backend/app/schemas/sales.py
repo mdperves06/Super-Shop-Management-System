@@ -31,6 +31,7 @@ class SaleCreate(CartIn):
     payments: list[PaymentLineIn] = []
     notes: str | None = Field(default=None, max_length=500)
     client_ref: str | None = Field(default=None, max_length=64)
+    discount_request_id: int | None = None  # an APPROVED request lets this sale exceed the cashier's discount limit
 
     @model_validator(mode="after")
     def _payments(self):  # noqa: ANN204
@@ -285,3 +286,31 @@ class DiscountOut(ORMModel):
     value: Num
     requires_approval: bool
     is_active: bool
+
+
+# ---- discount approval ----------------------------------------------------------------
+
+class DiscountRequestIn(CartIn):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class DiscountDecisionIn(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
+
+
+class DiscountRequestOut(ORMModel):
+    id: int
+    status: str
+    discount_percent: Num
+    discount_amount: Num
+    reason: str
+    cart_snapshot: dict
+    requested_by: int
+    requested_by_name: str | None = None
+    decided_by: int | None
+    decided_by_name: str | None = None
+    decided_at: UTCDateTime | None
+    decision_note: str | None
+    expires_at: UTCDateTime
+    used_sale_id: int | None
+    created_at: UTCDateTime

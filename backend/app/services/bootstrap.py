@@ -35,11 +35,13 @@ EXPENSE_CATEGORIES = [
 
 def sync_permissions_and_roles(db: Session, *, reset_system_roles: bool = False) -> None:
     perms = {p.code: p for p in db.scalars(select(Permission))}
+    fresh: set[str] = set()
     for module, group in PERMISSIONS.items():
         for code, desc in group.items():
             if code not in perms:
                 perms[code] = Permission(code=code, module=module, description=desc)
                 db.add(perms[code])
+                fresh.add(code)
             else:
                 perms[code].module, perms[code].description = module, desc
     db.flush()
@@ -55,6 +57,9 @@ def sync_permissions_and_roles(db: Session, *, reset_system_roles: bool = False)
             role.permissions = list(perms.values())  # always tracks the full catalogue
         elif reset_system_roles:
             role.permissions = [perms[c] for c in dict.fromkeys(spec["permissions"])]
+        else:  # upgrade path: newly introduced permissions reach the default roles without wiping local customisations
+            have = {p.code for p in role.permissions}
+            role.permissions.extend(perms[c] for c in dict.fromkeys(spec["permissions"]) if c in fresh and c not in have)
     db.flush()
 
 

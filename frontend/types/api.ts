@@ -545,3 +545,20 @@ export interface ImportResult {
   committed: boolean
   dry_run: boolean
 }
+
+export interface DiscountRequest {
+  id: number
+  status: "PENDING" | "APPROVED" | "REJECTED" | "USED" | "EXPIRED"
+  discount_percent: number
+  discount_amount: number
+  reason: string
+  requested_by: number
+  requested_by_name: string | null
+  decided_by: number | null
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_note: string | null
+  expires_at: string
+  used_sale_id: number | null
+  created_at: string
+}

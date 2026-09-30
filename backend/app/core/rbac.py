@@ -41,6 +41,7 @@ PERMISSIONS: dict[str, dict[str, str]] = {
         "sale.return": "Process sale returns",
         "sale.credit": "Sell on credit",
         "discount.override": "Give discounts above the cashier limit",
+        "discount.approve": "Approve or reject cashiers' discount requests",
         "promotion.manage": "Manage promotions and discount presets",
     },
     "register": {

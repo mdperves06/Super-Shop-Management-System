@@ -42,6 +42,7 @@ from app.models.purchasing import (  # noqa: F401
 )
 from app.models.sales import (  # noqa: F401
     Discount,
+    DiscountRequest,
     Promotion,
     Sale,
     SaleItem,

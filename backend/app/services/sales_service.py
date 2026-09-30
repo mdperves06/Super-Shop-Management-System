@@ -93,7 +93,12 @@ def create_sale(db: Session, data: SaleCreate, user: User) -> Sale:
     cart, customer = build_cart(db, data)
     inventory_service.lock_products(db, [ln.product.id for ln in cart.lines])
     allowed, cap = check_discount_allowed(db, cart, user)
-    if not allowed:
+    approval = None
+    from app.services import discount_service  # local: discount_service builds on this module
+
+    if not allowed and data.discount_request_id:
+        approval = discount_service.validate_for_sale(db, data.discount_request_id, data, user)
+    elif not allowed:
         raise PermissionDenied(
             f"Discount of {cart.manual_discount_percent}% exceeds your limit of {cap}%. A manager must approve it.",
             code="discount_limit_exceeded",
@@ -122,6 +127,8 @@ def create_sale(db: Session, data: SaleCreate, user: User) -> Sale:
         item = _add_item(db, sale, ln, user)
         cogs_total += item.cogs_amount
     sale.cogs_amount = cogs_total
+    if approval:
+        discount_service.redeem(db, approval, sale.id, user)
 
     for (line, amount, method) in applied:
         db.add(SalePayment(sale_id=sale.id, payment_method_id=method.id, amount=amount,

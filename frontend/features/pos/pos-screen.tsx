@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { CustomerDialog } from "@/features/parties/customers"
 import { PaymentDialog } from "@/features/pos/payment-dialog"
+import { DiscountApprovalPanel, useDiscountApproval } from "@/features/pos/discount-approval"
 import { OpenRegisterCard, useCurrentSession } from "@/features/pos/register-gate"
 import { useCart, type CartLine } from "@/features/pos/use-cart"
 import { Receipt } from "@/features/sales/receipt"
@@ -106,6 +107,7 @@ function PosTerminal({ registerName }: { registerName: string }) {
   }
 
   const p = cart.preview.data
+  const approval = useDiscountApproval(cart.payload, !!p && !p.discount_allowed)
   const lineTotals = useMemo(() => new Map((p?.lines ?? []).map((l) => [l.product_id, l])), [p])
   const busy = cart.preview.isFetching
   const errorMsg = cart.preview.error ? (cart.preview.error as Error).message : null
@@ -196,10 +198,10 @@ function PosTerminal({ registerName }: { registerName: string }) {
             )}
           </div>
 
-          <Totals preview={p} busy={busy} error={errorMsg} invoiceDiscount={cart.invoiceDiscount} onInvoiceDiscount={cart.setInvoiceDiscount} disabled={cart.lines.length === 0} />
+          <Totals preview={p} approval={approval} busy={busy} error={errorMsg} invoiceDiscount={cart.invoiceDiscount} onInvoiceDiscount={cart.setInvoiceDiscount} disabled={cart.lines.length === 0} />
 
           <div className="border-t p-3">
-            <Button size="xl" className="w-full" disabled={!p || !cart.valid || !!errorMsg || busy || !p.discount_allowed} onClick={() => setPayOpen(true)}>
+            <Button size="xl" className="w-full" disabled={!p || !cart.valid || !!errorMsg || busy || (!p.discount_allowed && !approval.approvedId)} onClick={() => setPayOpen(true)}>
               {t("pos.pay")} {p ? formatMoney(p.grand_total) : ""} <kbd className="ml-2 hidden rounded bg-primary-foreground/20 px-1.5 text-xs sm:inline">F9</kbd>
             </Button>
           </div>
@@ -214,7 +216,7 @@ function PosTerminal({ registerName }: { registerName: string }) {
       )}
 
       {p && (
-        <PaymentDialog open={payOpen} onClose={() => setPayOpen(false)} total={p.grand_total} payload={cart.payload} customerName={customer?.label ?? null}
+        <PaymentDialog open={payOpen} onClose={() => setPayOpen(false)} total={p.grand_total} payload={{ ...cart.payload, discount_request_id: p.discount_allowed ? undefined : approval.approvedId }} customerName={customer?.label ?? null}
           hasCustomer={!!customer} creditAvailable={p.credit_available}
           onDone={(sale) => { setPayOpen(false); setCompleted(sale); toast.success(t("pos.completed")); void products.refetch() }} />
       )}
@@ -305,8 +307,9 @@ function CartRow({ line, calc, flash, onQty, onRemove, onDiscount }: {
   )
 }
 
-function Totals({ preview, busy, error, invoiceDiscount, onInvoiceDiscount, disabled }: {
+function Totals({ preview, approval, busy, error, invoiceDiscount, onInvoiceDiscount, disabled }: {
   preview?: CartPreview
+  approval: ReturnType<typeof useDiscountApproval>
   busy: boolean
   error: string | null
   invoiceDiscount: { type: "PERCENT" | "FIXED"; value: number } | null
@@ -323,9 +326,7 @@ function Totals({ preview, busy, error, invoiceDiscount, onInvoiceDiscount, disa
         <Input id="inv-disc" type="number" min="0" step="0.01" disabled={disabled} value={invoiceDiscount?.value || ""} placeholder="0" onChange={(e) => onInvoiceDiscount({ type: invoiceDiscount?.type ?? "PERCENT", value: Number(e.target.value) || 0 })} className="h-8 w-24 text-right tabular" />
       </div>
       {preview && !preview.discount_allowed && (
-        <p className="rounded-md bg-warning/15 px-2 py-1.5 text-xs text-[oklch(0.45_0.12_70)] dark:text-warning" role="alert">
-          Discount {preview.manual_discount_percent}% is above your limit of {preview.max_discount_percent}%. Reduce it or ask a manager to process this sale.
-        </p>
+        <DiscountApprovalPanel approval={approval} percent={preview.manual_discount_percent} limit={preview.max_discount_percent} />
       )}
       <Row label={t("pos.subtotal")} value={preview?.subtotal} />
       <Row label={t("pos.discount")} value={preview ? -preview.discount_total : undefined} accent={!!preview?.discount_total} />

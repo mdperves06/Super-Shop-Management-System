@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -177,3 +177,29 @@ class Promotion(Base, TimestampMixin):
     end_time: Mapped[str | None] = mapped_column(String(5))
     priority: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class DiscountRequest(Base, TimestampMixin):
+    """A cashier's request for a manual discount above their limit; a manager approves or rejects it.
+
+    The request is bound to one exact cart (`cart_hash`) and can be redeemed by exactly one sale (status APPROVED -> USED).
+    """
+
+    __tablename__ = "discount_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    cart_hash: Mapped[str] = mapped_column(String(64))
+    cart_snapshot: Mapped[dict] = mapped_column(JSON)
+    discount_percent: Mapped[Decimal] = mapped_column(Rate)
+    discount_amount: Mapped[Decimal] = mapped_column(Money)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="PENDING", index=True)  # PENDING/APPROVED/REJECTED/USED
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    used_sale_id: Mapped[int | None] = mapped_column(ForeignKey("sales.id", ondelete="SET NULL"))
+
+    requester: Mapped["User"] = relationship(foreign_keys=[requested_by], lazy="joined")  # noqa: F821
+    approver: Mapped["User | None"] = relationship(foreign_keys=[decided_by], lazy="joined")  # noqa: F821

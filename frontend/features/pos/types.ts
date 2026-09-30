@@ -3,4 +3,5 @@ export interface CartPayload {
   customer_id: number | null
   invoice_discount_type?: "PERCENT" | "FIXED"
   invoice_discount_value: number
+  discount_request_id?: number
 }

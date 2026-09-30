@@ -39,6 +39,7 @@ export const NAV: NavItem[] = [
     children: [
       { labelKey: "nav.sales.all", href: "/sales", perms: ["sale.read"] },
       { labelKey: "nav.sales.returns", href: "/sales/returns", perms: ["sale.read"] },
+      { labelKey: "nav.sales.discounts", href: "/sales/discount-requests", perms: ["discount.approve", "sale.create"] },
     ],
   },
   {
